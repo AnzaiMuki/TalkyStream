@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Talkie-walkie</title>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+        }
+
+        /* ===== SPLASH ===== */
+        #splash {
+            position: fixed; inset: 0;
+            background: linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+        }
+        .splash-text {
+            font-size: 44px; font-weight: bold; color: white;
+            text-shadow: 0 0 30px rgba(255,255,255,0.5);
+            animation: zoomPulse 2s ease-in-out forwards;
+        }
+        @keyframes zoomPulse {
+            0%   { transform:scale(0.1); opacity:0; }
+            30%  { transform:scale(1.1); opacity:1; }
+            50%  { transform:scale(0.9); }
+            70%  { transform:scale(1.05); }
+            100% { transform:scale(1); opacity:1; }
+        }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+        /* ===== LAYOUT PRINCIPAL ===== */
+        #main {
+            display: none;
+            flex-direction: column;
+            height: 100dvh;
+            padding: 6px 10px;
+            padding-top: max(6px, env(safe-area-inset-top));
+            padding-bottom: max(6px, env(safe-area-inset-bottom));
+            gap: 6px;
+            overflow: hidden;
+        }
+
+        /* ===== TITRE ===== */
+        .title {
+            text-align: center;
+            color: #00d4ff;
+            font-size: 17px;
+            font-weight: bold;
+            text-shadow: 0 0 8px #00d4ff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 0;
+        }
+
+        /* ===== CARTES ===== */
+        .card {
+            background: rgba(0,20,40,0.65);
+            border: 1.5px solid #00d4ff;
+            border-radius: 10px;
+            padding: 7px 9px;
+            flex-shrink: 0;
+        }
+        .card-title {
+            color: #00d4ff; font-size: 10px;
+            font-weight: bold; text-transform: uppercase;
+            margin-bottom: 5px; white-space: nowrap;
+        }
+
+        /* ===== LIGNE / ROW ===== */
+        .row { display: flex; gap: 5px; align-items: center; }
+
+        /* ===== INPUTS ===== */
+        input {
+            flex: 1; min-width: 0;
+            padding: 6px 8px;
+            border: 1.5px solid #00d4ff;
+            border-radius: 6px;
+            background: #0f3460; color: white; font-size: 12px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        input::placeholder { color:#888; }
+        input:focus { outline:none; background:#1a4d7a; }
+
+        /* ===== BOUTONS ===== */
+        .btn {
+            padding: 6px 10px;
+            background: #00d4ff; color: #1a1a2e;
+            border: none; border-radius: 6px;
+            cursor: pointer; font-weight: bold;
+            font-size: 12px; white-space: nowrap; flex-shrink: 0;
+        }
+        .btn:active { transform:scale(0.95); }
+        .btn-red { background:#c62828; color:white; }
+
+        /* ===== TOGGLE MODE ===== */
+        .mode-row { display:flex; gap:6px; align-items:center; margin-top:5px; }
+        .mode-label { font-size:11px; color:#888; white-space:nowrap; }
+        .toggle { display:flex; border:1px solid #00d4ff; border-radius:5px; overflow:hidden; }
+        .tgl-btn {
+            padding: 4px 9px; font-size:11px;
+            background:transparent; color:#888;
+            border:none; cursor:pointer; white-space:nowrap;
+        }
+        .tgl-btn.active { background:#00d4ff; color:#1a1a2e; font-weight:bold; }
+
+        /* ===== CONTACTS (chips horizontaux) ===== */
+        .chips {
+            display: flex; flex-wrap: nowrap; gap:5px;
+            overflow-x: auto; overflow-y: hidden;
+            padding: 2px 0; min-height: 30px;
+        }
+        .chips::-webkit-scrollbar { height:3px; }
+        .chips::-webkit-scrollbar-thumb { background:#00d4ff; border-radius:3px; }
+        .chip {
+            display: flex; align-items: center; gap:4px;
+            background: rgba(0,212,255,0.1); border:1px solid #00d4ff;
+            border-radius:20px; padding:4px 8px;
+            white-space: nowrap; flex-shrink: 0; font-size:12px;
+        }
+        .dot {
+            width:7px; height:7px; border-radius:50%;
+            background:#555; flex-shrink:0;
+        }
+        .dot.on { background:#2ecc71; box-shadow:0 0 5px #2ecc71; }
+        .chip-x {
+            background:none; border:none; color:#c62828;
+            cursor:pointer; font-size:15px; padding:0 1px; line-height:1;
+        }
+        .no-chips { color:#888; font-size:12px; padding:4px 0; white-space:nowrap; }
+
+        /* ===== ZONE PTT (remplit l'espace restant) ===== */
+        .ptt-zone {
+            flex: 1; display:flex; flex-direction:column;
+            align-items:center; justify-content:center;
+            gap:10px; min-height:0;
+        }
+
+        #ptt-btn {
+            width: min(120px,32vw); height: min(120px,32vw);
+            border-radius:50%;
+            background:#0f3460; color:white;
+            border:3px solid #00d4ff; cursor:pointer;
+            font-size:13px; font-weight:bold;
+            box-shadow:0 0 18px rgba(0,212,255,0.3);
+            user-select:none; -webkit-user-select:none; touch-action:none;
+            transition:all 0.12s;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        #ptt-btn.actif {
+            background:#ff3b30; border-color:#ff6b60;
+            box-shadow:0 0 28px rgba(255,59,48,0.7);
+            transform:scale(0.95);
+        }
+        #ptt-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .bcast-btn {
+            width:100%; max-width:260px;
+            padding:9px 10px;
+            background:#ff6b00; border:2px solid #ff9500;
+            border-radius:8px; color:white;
+            font-weight:bold; font-size:13px; cursor:pointer;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .bcast-btn.actif { background:#c62828; border-color:#ff3b30; }
+
+        /* ===== STATUS ===== */
+        .status {
+            text-align:center; color:#00d4ff; font-size:11px;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+            flex-shrink:0;
+            min-height: 15px;
+        }
+
+        /* ===== BOUTON 1-À-1 ===== */
+        #btn-11 {
+            position:fixed; bottom:14px; left:14px;
+            width:48px; height:48px; border-radius:50%;
+            background:#00d4ff; color:#1a1a2e;
+            border:none; cursor:pointer; font-size:20px;
+            box-shadow:0 4px 14px rgba(0,212,255,0.4);
+            z-index:100; display:none;
+        }
+
+        /* ===== MODAL ===== */
+        .modal {
+            position:fixed; inset:0;
+            background:rgba(0,0,0,0.78);
+            display:none; align-items:center; justify-content:center;
+            z-index:2000;
+        }
+        .modal.show { display:flex; }
+        .modal-box {
+            background:#0a1628; border:2px solid #00d4ff;
+            border-radius:12px; padding:18px;
+            text-align:center; width:min(310px,90vw);
+            animation:slideUp 0.22s ease-out; overflow-y:auto; max-height:80vh;
+        }
+        @keyframes slideUp { from{transform:translateY(40px);opacity:0} to{transform:translateY(0);opacity:1} }
+        .modal-box h2 { color:#00d4ff; margin-bottom:12px; font-size:15px; }
+        .modal-box p  { color:#aaa; font-size:12px; margin-bottom:10px; }
+        .pick-item {
+            background:rgba(0,212,255,0.1); border:1.5px solid #00d4ff;
+            border-radius:8px; padding:10px; margin-bottom:7px;
+            cursor:pointer; transition:all 0.15s;
+        }
+        .pick-item:active { transform:scale(0.96); }
+
+        /* ===== APPEL ENTRANT ===== */
+        .call-notif {
+            position:fixed; inset:0; background:rgba(0,0,0,0.85);
+            display:none; flex-direction:column; align-items:center; justify-content:center;
+            z-index:3000; gap:20px;
+        }
+        .call-notif.show { display:flex; }
+        #caller-name { font-size:18px; font-weight:bold; color:#00d4ff; }
+        .call-btns { display:flex; gap:15px; }
+        .call-btn {
+            width:60px; height:60px; border-radius:50%;
+            border:none; cursor:pointer; font-size:24px;
+            font-weight:bold; transition:transform 0.15s;
+        }
+        .call-btn:active { transform:scale(0.9); }
+        .accept-btn { background:#2ecc71; color:white; }
+        .reject-btn { background:#c62828; color:white; }
+    </style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+    <div class="splash-text">🎙️ Talkie-walkie</div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+    <!-- TITLE -->
+    <div class="title">🎙️ Talkie-walkie</div>
+
+    <!-- CONNEXION CARD -->
+    <div class="card">
+        <div class="card-title">🔌 Connexion</div>
+        <div class="row">
+            <input id="in-pseudo" type="text" placeholder="Charm" maxlength="20">
+            <input id="in-canal" type="text" placeholder="Texte" maxlength="20">
+            <button class="btn" onclick="connecter()">OK</button>
+        </div>
+        <div class="mode-row">
+            <span class="mode-label">Mode :</span>
+            <div class="toggle">
+                <button class="tgl-btn active" onclick="changerMode('internet')">🌐 Internet</button>
+                <button class="tgl-btn" onclick="changerMode('lan')">📡 Local</button>
+            </div>
+            <input id="in-ip" type="text" placeholder="IP:Port" maxlength="25" style="display:none; flex:0.8;">
+            <button id="btn-info" class="btn" style="padding:4px 7px; font-size:11px;" onclick="alert('Mode Internet: Tous sur le même canal peuvent parler.\\nMode Local: Serveur PeerJS sur IP:Port')">ℹ️</button>
+        </div>
+    </div>
+
+    <!-- CONTACTS CARD -->
+    <div id="card-contacts" class="card" style="display:none;">
+        <div class="card-title">👥 Contacts</div>
+        <div class="row">
+            <input id="in-contact" type="text" placeholder="Pseudo du contact" maxlength="20">
+            <button class="btn" onclick="ajouterContact()" style="padding:6px 8px;">+</button>
+        </div>
+        <div id="chips" class="chips"></div>
+    </div>
+
+    <!-- PTT ZONE -->
+    <div id="ptt-zone" class="ptt-zone" style="display:none;">
+        <button id="ptt-btn" class="ptt-btn">🎙️ Parler</button>
+        <button id="bcast-btn" class="bcast-btn">📢 Diffuser à tous</button>
+    </div>
+
+    <!-- STATUS -->
+    <div class="status" id="status">En attente...</div>
+
+    <!-- AUDIO -->
+    <audio id="audio" autoplay style="display:none;"></audio>
+</div>
+
+<!-- MODAL 1-À-1 -->
+<div id="modal-11" class="modal">
+    <div class="modal-box">
+        <h2>📞 Appeler</h2>
+        <div id="pick-list"></div>
+    </div>
+</div>
+
+<!-- NOTIFICATION APPEL ENTRANT -->
+<div class="call-notif" id="call-notif">
+    <div>📞 Appel entrant de</div>
+    <div id="caller-name"></div>
+    <div class="call-btns">
+        <button class="call-btn accept-btn" onclick="accepterAppel()">✓</button>
+        <button class="call-btn reject-btn" onclick="refuserAppel()">✕</button>
+    </div>
+</div>
+
+<!-- BOUTON 1-À-1 -->
+<button id="btn-11" onclick="afficherModalAppel()">📞</button>
+
+<script>
+const $ = id => document.getElementById(id);
+let peer, localStream, modeReseau = 'internet';
+let monPseudo = '', monCanal = '';
+let contacts = JSON.parse(localStorage.getItem('tw-contacts') || '[]');
+let dataConn = {}, mediaConn = {}, enLigne = new Set();
+let micActif = false, canalOuvert = false;
+let connEntrante = null, appelant = null;
+
+// ===== UTILITAIRES =====
+const sanitize = s => s.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+const peerId = (canal, pseudo) => `${sanitize(canal)}-${sanitize(pseudo)}`;
+const nomDePeer = peer => {
+    const parts = peer.split('-');
+    return parts[parts.length - 1];
+};
+const st = msg => { $('status').textContent = msg; console.log(msg); };
+const vibrer = () => navigator.vibrate && navigator.vibrate(200);
+const stopVib = () => navigator.vibrate && navigator.vibrate(0);
+const fermerModal = id => $(id).classList.remove('show');
+
+function changerMode(mode) {
+    modeReseau = mode;
+    document.querySelectorAll('.tgl-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    $('in-ip').style.display = mode === 'lan' ? 'block' : 'none';
+}
+
+// ===== MICROPHONE AMÉLIORÉ =====
+async function getMic() {
+    try {
+        st('🎤 Demande d\'accès au micro...');
+        
+        // Vérifier si déjà capturé
+        if (localStream) {
+            st('✅ Micro : déjà capturé');
+            return true;
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        if (!stream) {
+            st('❌ Pas de stream reçu');
+            return false;
+        }
+
+        localStream = stream;
+        
+        // Vérifier les pistes
+        const audioTracks = localStream.getAudioTracks();
+        if (!audioTracks.length) {
+            st('❌ Aucune piste audio');
+            return false;
+        }
+
+        audioTracks.forEach(track => track.enabled = true);
+        st('✅ Micro : OK (' + audioTracks.length + ' piste(s))');
+        
+        console.log('✅ Microphone activé:', {
+            tracks: audioTracks.length,
+            enabled: audioTracks[0].enabled,
+            state: audioTracks[0].state
+        });
+        
+        return true;
+    } catch (err) {
+        console.error('❌ Erreur micro:', err);
+        
+        if (err.name === 'NotAllowedError') {
+            st('❌ Accès micro refusé - Autorise le micro dans les paramètres');
+        } else if (err.name === 'NotFoundError') {
+            st('❌ Aucun microphone détecté');
+        } else if (err.name === 'NotReadableError') {
+            st('❌ Micro en utilisation par une autre app');
+        } else {
+            st('❌ Erreur micro: ' + err.message);
+        }
+        
+        return false;
+    }
+}
+
+// ===== CONNEXION =====
+async function connecter() {
+    const pseudo = $('in-pseudo').value.trim();
+    const canal = $('in-canal').value.trim();
+
+    if (!pseudo || !canal) { alert('Entre pseudo et canal !'); return; }
+
+    monPseudo = pseudo;
+    monCanal = canal;
+
+    // Demander le micro avant de se connecter
+    const micOk = await getMic();
+    if (!micOk) {
+        alert('Impossible d\'accéder au microphone. Autorise l\'accès et réessaie.');
+        return;
+    }
+
+    let cfg;
+    if (modeReseau === 'lan') {
+        const ip = $('in-ip').value.trim();
+        if (!ip) { alert('Entre l\'IP du serveur local !'); return; }
+        const [h, p] = ip.includes(':') ? ip.split(':') : [ip,'9000'];
+        cfg = { host:h, port:parseInt(p), path:'/', secure:false };
+        st('Connexion au serveur local ' + h + ':' + p + '...');
+    } else {
+        cfg = { host:'0.peerjs.com', port:443, path:'/', secure:true };
+        st('Connexion PeerJS Cloud...');
+    }
+
+    peer = new Peer(peerId(canal, pseudo), cfg);
+
+    peer.on('open', () => {
+        st('✅ Connecté : ' + monPseudo);
+        $('card-contacts').style.display = 'block';
+        $('ptt-zone').style.display = 'flex';
+        $('btn-11').style.display = 'block';
+        afficherContacts();
+        contacts.forEach(n => getDataConn(n));
+    });
+
+    peer.on('error', err => {
+        console.error('Peer error:', err);
+        if (err.type === 'unavailable-id') alert('Pseudo déjà pris sur ce canal !');
+        else if (err.type === 'peer-unavailable') st('❌ Contact indisponible');
+        else st('❌ Erreur: ' + err.type);
+    });
+
+    peer.on('call', call => {
+        console.log('Appel reçu de:', call.peer);
+        call.answer(localStream || undefined);
+        const n = nomDePeer(call.peer);
+        mediaConn[n] = call;
+        call.on('stream', s => { 
+            console.log('Stream reçu');
+            $('audio').srcObject = s; 
+        });
+        call.on('close', () => delete mediaConn[n]);
+        call.on('error', e => console.error('Media error:', e));
+    });
+
+    peer.on('connection', conn => configConn(conn));
+}
+
+function configConn(conn) {
+    conn.on('open', () => {
+        const n = nomDePeer(conn.peer);
+        dataConn[n] = conn;
+        enLigne.add(n);
+        afficherContacts();
+        st('✅ ' + n + ' en ligne');
+    });
+    conn.on('data', d => gererMsg(conn, d));
+    conn.on('close', () => {
+        const n = nomDePeer(conn.peer);
+        delete dataConn[n];
+        enLigne.delete(n);
+        afficherContacts();
+    });
+    conn.on('error', console.error);
+}
+
+function getDataConn(nom) {
+    if (dataConn[nom] && dataConn[nom].open) return dataConn[nom];
+    const c = peer.connect(peerId(monCanal, nom));
+    dataConn[nom] = c;
+    configConn(c);
+    return c;
+}
+
+function gererMsg(conn, d) {
+    if (d.type === 'demande-appel') {
+        connEntrante = conn;
+        appelant = d.de;
+        $('caller-name').textContent = d.de;
+        $('call-notif').classList.add('show');
+        vibrer();
+        st('📞 Appel de ' + d.de);
+    }
+    if (d.type === 'appel-termine') {
+        $('call-notif').classList.remove('show');
+        stopVib();
+        st('📵 Appel annulé');
+    }
+    if (d.type === 'appel-accepte') {
+        stopVib();
+        st('✅ En appel avec ' + d.de);
+        demarrerAudio(d.de);
+    }
+    if (d.type === 'appel-refuse') {
+        stopVib();
+        st('❌ ' + d.de + ' a refusé');
+    }
+    if (d.type === 'raccroche') {
+        st('📵 ' + d.de + ' a raccroché');
+        const n = nomDePeer(conn.peer);
+        if (mediaConn[n]) {
+            mediaConn[n].close();
+            delete mediaConn[n];
+        }
+    }
+}
+
+// ===== CONTACTS =====
+function ajouterContact() {
+    const nom = $('in-contact').value.trim();
+    if (!nom) return;
+    if (nom.toLowerCase() === monPseudo.toLowerCase()) {
+        alert('Tu ne peux pas t\'ajouter !');
+        return;
+    }
+    if (contacts.map(c=>c.toLowerCase()).includes(nom.toLowerCase())) {
+        alert('Déjà ajouté !');
+        return;
+    }
+    contacts.push(nom);
+    localStorage.setItem('tw-contacts', JSON.stringify(contacts));
+    $('in-contact').value = '';
+    afficherContacts();
+    if (peer) getDataConn(nom);
+}
+
+function supprimerContact(nom) {
+    contacts = contacts.filter(c=>c!==nom);
+    localStorage.setItem('tw-contacts', JSON.stringify(contacts));
+    if (dataConn[nom]) { dataConn[nom].close(); delete dataConn[nom]; }
+    if (mediaConn[nom]) { mediaConn[nom].close(); delete mediaConn[nom]; }
+    enLigne.delete(nom);
+    afficherContacts();
+}
+
+function afficherContacts() {
+    const el = $('chips');
+    if (!contacts.length) {
+        el.innerHTML = '<span class="no-chips">Aucun contact</span>';
+        return;
+    }
+    el.innerHTML = contacts.map(c => `
+        <div class="chip">
+            <span class="dot ${enLigne.has(c)?'on':''}"></span>
+            <span>${c}</span>
+            <button class="chip-x" onclick="supprimerContact('${c}')">×</button>
+        </div>
+    `).join('');
+}
+
+// ===== APPEL 1-À-1 =====
+function afficherModalAppel() {
+    if (!peer) { alert('Connecte-toi d\'abord !'); return; }
+    if (!contacts.length) { alert('Aucun contact !'); return; }
+    $('pick-list').innerHTML = contacts.map(c =>
+        `<div class="pick-item" onclick="appelerContact('${c}')">📞 ${c}</div>`
+    ).join('');
+    $('modal-11').classList.add('show');
+}
+
+async function appelerContact(nom) {
+    fermerModal('modal-11');
+    if (!localStream) {
+        const ok = await getMic();
+        if (!ok) {
+            st('❌ Impossible d\'accéder au micro');
+            return;
+        }
+    }
+    st('📞 Appel vers ' + nom + '...');
+    vibrer();
+    const conn = getDataConn(nom);
+    const send = () => conn.send({ type:'demande-appel', de:monPseudo });
+    conn.open ? send() : conn.on('open', send);
+}
+
+function demarrerAudio(nom) {
+    if (!localStream) {
+        st('❌ Pas de stream local');
+        return;
+    }
+    console.log('Démarrage appel audio avec:', nom);
+    const call = peer.call(peerId(monCanal, nom), localStream);
+    mediaConn[nom] = call;
+    call.on('stream', s => {
+        console.log('Stream reçu de:', nom);
+        $('audio').srcObject = s;
+    });
+    call.on('close', () => {
+        console.log('Appel fermé');
+        delete mediaConn[nom];
+    });
+    call.on('error', e => {
+        console.error('Erreur appel:', e);
+        st('❌ Erreur appel: ' + e.message);
+    });
+}
+
+function accepterAppel() {
+    $('call-notif').classList.remove('show');
+    stopVib();
+    if (connEntrante) {
+        connEntrante.send({ type:'appel-accepte', de:monPseudo });
+        st('✅ En appel avec ' + appelant);
+    }
+    connEntrante = null;
+    appelant = null;
+}
+
+function refuserAppel() {
+    $('call-notif').classList.remove('show');
+    stopVib();
+    if (connEntrante) {
+        connEntrante.send({ type:'appel-refuse', de:monPseudo });
+        st('Appel refusé');
+    }
+    connEntrante = null;
+    appelant = null;
+}
+
+// ===== PTT AMÉLIORÉ =====
+const pttBtn = $('ptt-btn');
+
+function activerMicro() {
+    if (!localStream) {
+        st('❌ Pas de micro capturé');
+        return;
+    }
+
+    const activeConns = Object.keys(mediaConn).length;
+    if (!activeConns && !canalOuvert) {
+        st('⚠️ Pas d\'appel actif');
+        return;
+    }
+
+    // Vérifier les pistes audio
+    const tracks = localStream.getAudioTracks();
+    if (!tracks.length) {
+        st('❌ Aucune piste audio');
+        return;
+    }
+
+    console.log('Activation micro:', {
+        tracks: tracks.length,
+        connections: activeConns,
+        broadcast: canalOuvert
+    });
+
+    micActif = true;
+    tracks.forEach(t => {
+        t.enabled = true;
+        console.log('Track activée:', t.label, 'enabled:', t.enabled);
+    });
+
+    pttBtn.classList.add('actif');
+    pttBtn.textContent = '🔴 En ligne...';
+    st('🔴 Micro ACTIVÉ');
+}
+
+function couperMicro() {
+    if (!localStream) return;
+
+    micActif = false;
+    const tracks = localStream.getAudioTracks();
+    tracks.forEach(t => {
+        t.enabled = false;
+        console.log('Track désactivée:', t.label);
+    });
+
+    pttBtn.classList.remove('actif');
+    pttBtn.textContent = '🎙️ Parler';
+    st('⚫ Micro coupé');
+}
+
+pttBtn.addEventListener('mousedown', activerMicro);
+pttBtn.addEventListener('mouseup', couperMicro);
+pttBtn.addEventListener('mouseleave', () => { if (micActif) couperMicro(); });
+pttBtn.addEventListener('touchstart', e => { e.preventDefault(); activerMicro(); });
+pttBtn.addEventListener('touchend',   e => { e.preventDefault(); couperMicro(); });
+pttBtn.addEventListener('touchcancel',e => { e.preventDefault(); couperMicro(); });
+
+// ===== DIFFUSION =====
+$('bcast-btn').addEventListener('click', async () => {
+    if (!peer) { alert('Connecte-toi d\'abord !'); return; }
+    if (!contacts.length) { alert('Aucun contact !'); return; }
+    if (!localStream) {
+        const ok = await getMic();
+        if (!ok) return;
+    }
+
+    const btn = $('bcast-btn');
+    if (canalOuvert) {
+        Object.values(mediaConn).forEach(c => { try{c.close();}catch(e){} });
+        mediaConn = {};
+        couperMicro();
+        canalOuvert = false;
+        btn.classList.remove('actif');
+        btn.textContent = '📢 Diffuser à tous';
+        st('Canal fermé');
+        return;
+    }
+
+    contacts.forEach(nom => {
+        const call = peer.call(peerId(monCanal, nom), localStream);
+        mediaConn[nom] = call;
+        call.on('stream', s => { $('audio').srcObject = s; });
+        call.on('close', () => delete mediaConn[nom]);
+        call.on('error', console.error);
+    });
+
+    canalOuvert = true;
+    btn.classList.add('actif');
+    btn.textContent = '🔇 Fermer canal';
+    st('📢 Canal ouvert (' + contacts.length + ' contact(s)) — Maintiens Parler');
+});
+
+// ===== SPLASHSCREEN =====
+setTimeout(() => {
+    $('splash').style.display = 'none';
+    $('main').style.display = 'flex';
+}, 2000);
+
+// ===== NETTOYAGE =====
+window.addEventListener('beforeunload', () => {
+    Object.values(dataConn).forEach(c => { try{c.send({type:'raccroche',de:monPseudo});}catch(e){} });
+    Object.values(mediaConn).forEach(c => { try{c.close();}catch(e){} });
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (peer) peer.destroy();
+});
+
+// Log pour déboguer
+console.log('🎙️ Talkie-walkie chargé - Version améliorée');
+</script>
+</body>
+</html>
