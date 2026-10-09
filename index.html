@@ -7,7 +7,7 @@
 
     <!-- ===== PWA META TAGS ===== -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#00d4ff">
+    <meta name="theme-color" content="#D8DDDE">
     <meta name="description" content="Application talkie-walkie WebRTC temps réel">
 
     <!-- Android -->
@@ -26,9 +26,13 @@
 
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <!-- Firebase App + Auth -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
 
@@ -328,6 +332,11 @@
         .auth-guest-input { display:flex; flex-direction:column; gap:7px; margin-top:2px; }
         .auth-guest-input input { flex:none; width:100%; padding:10px; font-size:14px; }
         .auth-note { font-size:11px; color:#888; margin-top:10px; }
+        .btn-google:disabled { opacity:0.6; cursor:default; }
+        .modal-box .pseudo-apercu { color:#00d4ff; font-size:11px; margin:0; min-height:14px; }
+        #modal-direct .modal-box { max-height:90vh; overflow-y:auto; }
+        .dir-ta { width:100%; box-sizing:border-box; background:#0d1117; color:#00d4ff; border:1px solid rgba(0,212,255,0.3); border-radius:6px; padding:8px; font-size:11px; resize:none; margin:8px 0; }
+        .dir-row { display:flex; gap:8px; } .dir-row .btn { flex:1; padding:9px 4px; }
 
         /* ===== APPEL ENTRANT ===== */
         .call-notif {
@@ -346,18 +355,128 @@
         .call-btn:active { transform:scale(0.9); }
         .accept-btn { background:#2ecc71; color:white; }
         .reject-btn { background:#c62828; color:white; }
-            #dir-txt { width:100%; height:54px; margin:8px 0; background:#050d1a; color:#cde; border:1px solid #1e3a5f; border-radius:6px; font-size:10px; padding:6px; }
-        #dir-video { width:100%; border-radius:8px; margin-bottom:8px; }
-        #dir-qr { margin-bottom:8px; }
-            #replay-btn { background:#0a1628; border-color:#00d4ff; color:#00d4ff; }
-        #replay-btn.lecture { background:#00d4ff; color:#0a1628; }
+    </style>
+    <style id="theme">
+        /* ===== THÈME : RADIO DE TERRAIN ===== */
+        :root {
+            --corps:#D8DDDE; --corps2:#C7CED0; --encre:#18232B; --doux:#4F5E67;
+            --orange:#FF5A1F; --orange2:#D9430C; --lcd:#C6D4A8; --lcd-encre:#1F2B16;
+            --panneau:#EFF2F2; --ok:#2E9E5B; --alerte:#F2A900; --err:#D93636;
+            --cond:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+            --texte:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+            --ico-mic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z'/%3E%3Cpath d='M19 10v2a7 7 0 0 1-14 0v-2'/%3E%3Cpath d='M12 19v4M8 23h8'/%3E%3C/svg%3E");
+            --ico-gear:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1'/%3E%3C/svg%3E");
+        }
+        html, body { background:var(--corps); color:var(--encre); font-family:var(--texte); font-size:14px; }
+        :focus-visible { outline:3px solid var(--orange); outline-offset:2px; }
+
+        /* Lancement */
+        #splash { background:var(--corps); }
+        .splash-text { color:var(--encre); font-family:var(--cond); font-size:56px; text-shadow:none; display:flex; align-items:center; gap:14px; }
+        .splash-text::before { content:''; width:22px; height:22px; border-radius:50%; background:var(--orange); box-shadow:0 0 0 6px rgba(255,90,31,.25); }
+
+        /* En-tête + écran LCD */
+        .header { order:-2; }
+        .title { font-family:var(--cond); font-weight:700; font-size:24px; color:var(--encre); text-align:center; }
+        #net { background:var(--panneau); color:var(--encre); border:1px solid rgba(24,35,43,.15); font-family:var(--cond); font-weight:600; font-size:13px; padding:4px 10px 4px 8px; --s:#8A949A; }
+        #net .dot { background:var(--s); box-shadow:none; }
+        #net.net-ok { --s:var(--ok); color:var(--encre); }
+        #net.net-reco { --s:var(--alerte); color:var(--encre); }
+        #net.net-out { --s:var(--err); color:var(--encre); }
+        #btn-set { background:var(--panneau); color:var(--encre); border:1px solid rgba(24,35,43,.2); font-size:0; width:36px; height:36px; display:grid; place-items:center; }
+        #btn-set::before { content:''; width:19px; height:19px; background:currentColor; -webkit-mask:var(--ico-gear) center/contain no-repeat; mask:var(--ico-gear) center/contain no-repeat; }
+        .status { order:-1; display:block; background:var(--lcd); color:var(--lcd-encre); font-family:var(--cond); font-weight:600; font-size:16px; padding:8px 12px; min-height:36px; border-radius:8px; border:1px solid #9FB083; box-shadow:inset 0 2px 5px rgba(20,30,10,.35), 0 1px 0 rgba(255,255,255,.6); }
+
+        /* Panneaux et champs */
+        .card { background:var(--panneau); color:var(--encre); border:1px solid rgba(24,35,43,.1); border-radius:14px; padding:10px 12px; box-shadow:0 1px 0 #fff inset, 0 2px 6px rgba(24,35,43,.08); }
+        .card-title { font-family:var(--cond); font-weight:700; font-size:17px; color:var(--encre); text-transform:none; letter-spacing:.2px; }
+        .mode-label, .no-chips { color:var(--doux); }
+        body input { background:#fff; color:var(--encre); border:1.5px solid #B4BDC1; border-radius:10px; font-family:var(--texte); font-size:15px; }
+        body input::placeholder { color:#7A878E; }
+        body input:focus { outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,90,31,.2); }
+        .btn { background:var(--encre); color:#fff; border:none; border-radius:10px; font-family:var(--cond); font-weight:600; font-size:16px; }
+        .btn-red { background:var(--err); }
+        .toggle { background:#DDE2E4; border:none; border-radius:10px; padding:3px; gap:2px; }
+        .tgl-btn { background:transparent; color:var(--doux); border:none; border-radius:8px; font-family:var(--cond); font-weight:600; font-size:14px; }
+        .tgl-btn.active { background:#fff; color:var(--encre); box-shadow:0 1px 3px rgba(24,35,43,.25); }
+        .chip { background:#fff; color:var(--encre); border:1px solid #CBD3D6; border-radius:999px; font-weight:500; }
+        .chip-x { color:var(--doux); }
+        .dot { background:#9AA3A7; box-shadow:none; }
+        .dot.on { background:var(--ok); box-shadow:0 0 0 3px rgba(46,158,91,.2); }
+
+        /* Le bouton émetteur : seul élément marquant */
+        .ptt-zone { gap:20px; }
+        #ptt-btn {
+            position:relative; overflow:visible;
+            width:min(220px,54vw,34dvh); height:min(220px,54vw,34dvh);
+            display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+            font-family:var(--cond); font-weight:700; font-size:26px; letter-spacing:.5px; color:#fff; border:none;
+            background:radial-gradient(circle at 35% 28%, #FF8A55 0%, var(--orange) 48%, var(--orange2) 100%);
+            box-shadow:0 0 0 9px var(--corps2), 0 0 0 10px rgba(24,35,43,.22), inset 0 -10px 18px rgba(120,25,0,.35), inset 0 6px 10px rgba(255,255,255,.35), 0 18px 26px -10px rgba(217,67,12,.6);
+            transition:transform .12s, box-shadow .12s;
+        }
+        #ptt-btn::before { content:''; width:34%; height:34%; background:currentColor; -webkit-mask:var(--ico-mic) center/contain no-repeat; mask:var(--ico-mic) center/contain no-repeat; }
+        #ptt-btn.actif {
+            transform:scale(.965); border:none;
+            background:radial-gradient(circle at 50% 40%, #E5400F, #B8330A 100%);
+            box-shadow:0 0 0 9px var(--corps2), 0 0 0 10px rgba(24,35,43,.22), inset 0 8px 20px rgba(60,10,0,.55);
+        }
+        #ptt-btn.actif::after { content:''; position:absolute; inset:-10px; border-radius:50%; border:3px solid var(--orange); animation:onde 1.1s ease-out infinite; pointer-events:none; }
+        @keyframes onde { from { transform:scale(1); opacity:.7; } to { transform:scale(1.28); opacity:0; } }
+        #ptt-btn:disabled { opacity:.45; }
+        .bcast-btn { background:transparent; color:var(--encre); border:1.5px solid var(--encre); border-radius:12px; font-family:var(--cond); font-weight:600; font-size:16px; padding:10px 14px; }
+        .bcast-btn.actif { background:var(--err); border-color:var(--err); color:#fff; }
+        #btn-11 { background:var(--encre); color:#fff; box-shadow:0 6px 16px rgba(24,35,43,.35); bottom:max(14px, env(safe-area-inset-bottom)); }
+
+        /* Fenêtres */
+        .modal { background:rgba(24,35,43,.5); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+        .modal-box { background:var(--panneau); color:var(--encre); border:none; border-radius:18px; box-shadow:0 20px 50px rgba(24,35,43,.4); }
+        .modal-box h2 { font-family:var(--cond); font-weight:700; font-size:22px; color:var(--encre); }
+        .modal-box p { color:var(--doux); }
+        .pick-item { background:#fff; color:var(--encre); border:1px solid #CBD3D6; border-radius:10px; }
+        #modal-set, #auth { background:var(--corps); }
+        #modal-set .modal-box { background:var(--corps); border-radius:0; box-shadow:none; }
+        .set-head { background:var(--corps); border-bottom:1px solid rgba(24,35,43,.15); }
+        .set-close { color:var(--encre); border:1px solid rgba(24,35,43,.3); }
+        .set-row { border-bottom:1px solid rgba(24,35,43,.1); }
+        .set-row span:first-child { color:var(--doux); }
+        .set-row span:last-child { color:var(--encre); }
+        .code-big { color:var(--encre); font-family:var(--cond); font-weight:700; }
+        .dir-ta { background:#fff; color:var(--encre); border-color:#B4BDC1; }
+        #auth p { color:var(--doux) !important; }
+        #lien-compte, .auth-note, .auth-sep { color:var(--doux); }
+        .auth-sep::before, .auth-sep::after { background:rgba(24,35,43,.2); }
+        .modal-box .pseudo-apercu { color:var(--orange2); }
+        .call-notif { background:var(--encre); color:#fff; border:none; border-radius:16px; box-shadow:0 16px 40px rgba(24,35,43,.45); }
+        #caller-name { font-family:var(--cond); font-weight:700; }
+        .accept-btn { background:var(--ok); color:#fff; }
+        .reject-btn { background:var(--err); color:#fff; }
+
+        /* ===== THÈME SOMBRE ===== */
+        html[data-theme="dark"] { color-scheme:dark; --corps:#222527; --corps2:#34383B; --encre:#E8EAEB; --doux:#A3A9AD; --panneau:#2C3033; --lcd:#2C3A22; --lcd-encre:#B9E58C; }
+        html[data-theme="dark"] .card { border-color:rgba(255,255,255,.08); box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 2px 8px rgba(0,0,0,.45); }
+        html[data-theme="dark"] body input, html[data-theme="dark"] .dir-ta { background:#1A1D1F; color:var(--encre); border-color:#4A5054; }
+        html[data-theme="dark"] .btn, html[data-theme="dark"] #btn-11 { background:var(--encre); color:#222527; }
+        html[data-theme="dark"] .btn-red { background:var(--err); color:#fff; }
+        html[data-theme="dark"] .toggle { background:#1A1D1F; }
+        html[data-theme="dark"] .tgl-btn.active { background:#3A3F43; color:var(--encre); box-shadow:none; }
+        html[data-theme="dark"] .chip, html[data-theme="dark"] .pick-item { background:#1A1D1F; color:var(--encre); border-color:#4A5054; }
+        html[data-theme="dark"] #net, html[data-theme="dark"] #btn-set { border-color:rgba(255,255,255,.18); }
+        html[data-theme="dark"] .status { border-color:#445A33; box-shadow:inset 0 2px 6px rgba(0,0,0,.55); text-shadow:0 0 6px rgba(185,229,140,.35); }
+        html[data-theme="dark"] .set-row, html[data-theme="dark"] .set-head { border-color:rgba(255,255,255,.1); }
+        html[data-theme="dark"] .set-close { border-color:rgba(255,255,255,.3); }
+        html[data-theme="dark"] .call-notif { background:#3A3F43; }
+        html[data-theme="dark"] .modal { background:rgba(0,0,0,.6); }
+        html[data-theme="dark"] .btn-google { background:#fff; }
+
+        @media (prefers-reduced-motion: reduce) { #ptt-btn.actif::after, .splash-text { animation:none; } }
     </style>
 </head>
 <body>
 
 <!-- SPLASH -->
 <div id="splash">
-    <div class="splash-text">🎙️ Talkie-walkie</div>
+    <div class="splash-text">Talkie-walkie</div>
 </div>
 
 <!-- MAIN -->
@@ -365,14 +484,14 @@
     <!-- TITLE -->
     <div class="header">
         <div id="net" class="net-off"><span class="dot"></span><span id="net-txt">Hors connexion</span></div>
-        <div class="title">🎙️ Talkie-walkie</div>
+        <div class="title">Talkie-walkie</div>
         <button id="btn-set" onclick="ouvrirParametres()">⚙️</button>
     </div>
 
     <!-- CONNEXION CARD -->
     <div class="card">
         <div class="card-title" style="display:flex; justify-content:space-between; gap:8px;">
-            <span>🔌 Connexion</span>
+            <span>Connexion</span>
             <span id="lien-compte" onclick="deconnecterCompte()"></span>
         </div>
         <div class="row">
@@ -395,7 +514,7 @@
 
     <!-- CONTACTS CARD -->
     <div id="card-contacts" class="card" style="display:none;">
-        <div class="card-title">👥 Contacts</div>
+        <div class="card-title">Contacts</div>
         <div class="row">
             <input id="in-contact" type="text" placeholder="Pseudo du contact" maxlength="20">
             <button class="btn" onclick="ajouterContact()" style="padding:6px 8px;">+</button>
@@ -405,16 +524,16 @@
 
     <!-- PTT ZONE -->
     <div id="ptt-zone" class="ptt-zone" style="display:none;">
-        <button id="ptt-btn" class="ptt-btn">🎙️ Parler</button>
+        <button id="ptt-btn" class="ptt-btn">Parler</button>
         <button id="bcast-btn" class="bcast-btn">📢 Diffuser à tous</button>
-        <button id="replay-btn" class="bcast-btn" onclick="reecouter()">⏪ Réécouter</button>
     </div>
 
     <!-- STATUS -->
-    <div class="status" id="status">En attente...</div>
+    <div class="status" id="status" role="status" aria-live="polite">En attente...</div>
 
     <!-- AUDIO -->
-    <audio id="audio" autoplay style="display:none;"></audio>
+    <audio id="audio" autoplay playsinline style="display:none;"></audio>
+    <div id="son-bloque" onclick="debloquerSon()" style="display:none; position:fixed; left:12px; right:12px; bottom:max(12px, env(safe-area-inset-bottom)); z-index:3000; padding:14px; text-align:center; background:#ff9500; color:#000; font-weight:bold; border-radius:10px; cursor:pointer;">🔊 Touche ici pour activer le son</div>
 </div>
 
 <!-- MODAL 1-À-1 -->
@@ -440,11 +559,27 @@
         <div class="set-row"><span>Réseau</span><span id="set-net"></span></div>
         <div class="set-row"><span>Contacts en ligne</span><span id="set-online"></span></div>
         <div class="set-row"><span>Réduction de bruit</span><span id="set-bruit"></span></div>
+        <div class="set-btns" style="margin-top:10px;">
+            <button class="btn" id="btn-theme" onclick="changerTheme()"></button>
+            <button class="btn" id="btn-langue" onclick="changerLangue()"></button>
+        </div>
+        <div class="set-row" style="margin-top:10px;"><span>♿ Touches &amp; retour sensoriel</span><span></span></div>
+        <div class="set-btns">
+            <button class="btn" id="btn-touche" onclick="assignerTouche()"></button>
+            <button class="btn" id="btn-touche-off" onclick="retirerTouche()">✖ Retirer la touche</button>
+            <button class="btn" id="btn-toggle" onclick="basculerOpt('toggle')"></button>
+            <button class="btn" id="btn-sons" onclick="basculerOpt('sons')"></button>
+            <button class="btn" id="btn-vib" onclick="basculerOpt('vib')"></button>
+            <button class="btn" id="btn-voix" onclick="basculerOpt('voix')"></button>
+            <button class="btn" id="btn-debit" onclick="changerDebit()"></button>
+        </div>
+        <p style="font-size:11px; color:#888; text-align:left; margin:6px 0 0;">Casque ou télécommande Bluetooth : Lecture/Pause = parler ou couper, Suivant = répondre à un appel.</p>
         <div class="set-btns">
             <button class="btn" id="btn-bruit" onclick="basculerRnnoise()"></button>
             <button class="btn" onclick="ouvrirPartage()">📱 Partager par QR code</button>
             <button class="btn btn-red" onclick="resetContacts()">🗑️ Réinitialiser les contacts</button>
             <button class="btn btn-red" onclick="deconnecter()">🔌 Se déconnecter du canal</button>
+            <button class="btn" onclick="changerPseudo()">✏️ Changer mon pseudo</button>
             <button class="btn" onclick="deconnecterCompte()" id="btn-changer-compte">👤 Changer de compte</button>
             <button class="btn btn-red" onclick="supprimerCompte()" id="btn-suppr-compte">🗑️ Supprimer données locales</button>
             <button class="btn" style="background:#333;color:#fff;" onclick="fermerModal('modal-set')">Fermer</button>
@@ -456,8 +591,9 @@
 <!-- ÉCRAN COMPTE -->
 <div id="auth" class="modal">
     <div class="modal-box">
+        <div id="auth-login">
         <h2>👤 Connexion</h2>
-        <p style="color:#aaa; font-size:12px; margin-bottom:12px;">Connecte-toi pour garder ton pseudo et tes contacts, ou continue sans compte.</p>
+        <p style="color:#aaa; font-size:12px; margin-bottom:12px;">Connecte-toi avec Google pour choisir ton pseudo, ou continue sans compte.</p>
 
         <!-- Bouton Google -->
         <button class="btn-google" id="btn-google" onclick="connexionGoogle()">
@@ -471,16 +607,72 @@
 
         <!-- Mode invité -->
         <div class="auth-guest-input">
-            <input id="au-pseudo-guest" type="text" placeholder="Ton pseudo (lettres, chiffres, _)" maxlength="20" autocomplete="username" autocapitalize="off" autocorrect="off">
+            <input id="au-pseudo-guest" type="text" placeholder="Ton pseudo" maxlength="20" autocomplete="username" autocapitalize="off" autocorrect="off" oninput="apercuPseudo(this,'apercu-guest')">
+            <p class="pseudo-apercu" id="apercu-guest"></p>
             <button class="btn" style="width:100%; padding:10px; font-size:14px;" onclick="connexionInvite()">Continuer sans compte</button>
         </div>
 
         <p class="auth-note">En mode invité, ton pseudo et tes contacts sont enregistrés uniquement sur cet appareil.</p>
+        </div>
+
+        <!-- Étape 2 : choisir son pseudo (après Google, ou changement de pseudo) -->
+        <div id="auth-pseudo" style="display:none;">
+            <h2 id="pseudo-titre">✏️ Choisis ton pseudo</h2>
+            <p id="pseudo-info" style="color:#aaa; font-size:12px; margin-bottom:12px;"></p>
+            <div class="auth-guest-input">
+                <input id="au-pseudo-choix" type="text" placeholder="Ton pseudo" maxlength="20" autocomplete="off" autocapitalize="off" autocorrect="off" oninput="apercuPseudo(this,'apercu-choix')">
+                <p class="pseudo-apercu" id="apercu-choix"></p>
+                <p id="pseudo-err" style="color:#ff6b60; min-height:14px; margin:0; font-size:12px;"></p>
+                <button class="btn" style="width:100%; padding:10px; font-size:14px;" onclick="validerPseudo()">Valider le pseudo</button>
+                <button class="btn" id="pseudo-retour" style="width:100%; padding:10px; font-size:14px; background:#333; color:#fff;" onclick="annulerPseudo()">← Retour</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CHOIX DE LA LANGUE (premier lancement) -->
+<div id="langue-init" class="modal" style="background:var(--corps); z-index:1900;">
+    <div class="modal-box" style="background:transparent; box-shadow:none; max-width:320px;">
+        <h2>Langue · Language</h2>
+        <p>Choisis la langue de l'application<br>Choose the app language</p>
+        <div class="set-btns">
+            <button class="btn" id="lg-fr" style="font-size:20px; padding:14px;" onclick="choisirLangue('fr', true)">Français</button>
+            <button class="btn" id="lg-en" style="font-size:20px; padding:14px;" onclick="choisirLangue('en', true)">English</button>
+        </div>
     </div>
 </div>
 
 <!-- MODAL PARTAGE QR CODE -->
-<div id="modal-qr" class="modal" onclick="if(event.target===this)fermerModal('modal-qr')">
+<!-- CONNEXION DIRECTE (P2P sans serveur) -->
+<div id="modal-direct" class="modal">
+    <div class="modal-box">
+        <h2>📶 Connexion directe</h2>
+        <p id="dir-info" style="color:#aaa; font-size:12px; margin-bottom:10px;">Sans serveur ni Internet. Relie d'abord les deux téléphones (Wi-Fi Direct, partage de connexion ou même Wi-Fi), puis échangez 2 codes.</p>
+        <div id="dir-choix" class="auth-guest-input">
+            <button class="btn" style="width:100%; padding:10px; font-size:14px;" onclick="directCreer()">➕ Créer la connexion</button>
+            <button class="btn" style="width:100%; padding:10px; font-size:14px;" onclick="directRejoindre()">🔗 Rejoindre</button>
+        </div>
+        <div id="dir-code" style="display:none;">
+            <p id="dir-code-titre"></p>
+            <div id="dir-qr" style="background:#fff; padding:8px; border-radius:8px; display:inline-block;"></div>
+            <textarea id="dir-out" class="dir-ta" rows="3" readonly onclick="this.select()"></textarea>
+            <button class="btn" style="width:100%;" onclick="directCopier()">📋 Copier le code</button>
+        </div>
+        <div id="dir-saisie" style="display:none;">
+            <p id="dir-saisie-titre" style="margin-top:10px;"></p>
+            <video id="dir-video" playsinline muted style="display:none; width:100%; border-radius:8px;"></video>
+            <textarea id="dir-in" class="dir-ta" rows="3" placeholder="Colle le code ici" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+            <div class="dir-row">
+                <button class="btn" onclick="directScanner()">📷 Scanner</button>
+                <button class="btn" onclick="directValider()">✅ Valider</button>
+            </div>
+        </div>
+        <p id="dir-st" style="min-height:14px; margin:10px 0 8px;"></p>
+        <button class="btn" style="width:100%; background:#333; color:#fff;" onclick="directAnnuler()">Fermer</button>
+    </div>
+</div>
+
+<div id="modal-qr" class="modal" onclick="if(event.target===this)fermerQr()">
     <div class="modal-box">
         <h2>📱 Partager par QR code</h2>
         <p>Ton ami scanne le QR code ou ouvre le lien : le canal est pré-rempli.</p>
@@ -488,36 +680,12 @@
         <div class="code-big" id="set-code"></div>
         <p>Code du canal</p>
         <input id="set-link" type="text" readonly onclick="this.select()">
+        <video id="scan-video" playsinline muted style="display:none; width:100%; border-radius:10px; margin-top:10px; background:#000;"></video>
         <div class="set-btns">
+            <button class="btn" id="btn-scan" onclick="scannerInvitation()">📷 Scanner un QR code</button>
             <button class="btn" onclick="copierLien()">📋 Copier le lien</button>
             <button class="btn" id="btn-share" style="display:none;" onclick="partagerLien()">📤 Partager</button>
-            <button class="btn" style="background:#333;color:#fff;" onclick="fermerModal('modal-qr');ouvrirParametres()">← Retour</button>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL LIAISON DIRECTE (Wi-Fi sans serveur) -->
-<div id="modal-direct" class="modal">
-    <div class="modal-box">
-        <h2>📶 Liaison directe Wi-Fi</h2>
-        <p>Sans Internet : les deux téléphones sur le même Wi-Fi, ou l'un active son point d'accès et l'autre s'y connecte.</p>
-        <div id="dir-start" class="set-btns">
-            <button class="btn" onclick="directCreer()">Créer la liaison</button>
-            <button class="btn" onclick="directRejoindre()">Rejoindre une liaison</button>
-        </div>
-        <div id="dir-step" style="display:none;">
-            <p id="dir-msg"></p>
-            <div id="dir-qr"></div>
-            <video id="dir-video" playsinline muted style="display:none;"></video>
-            <textarea id="dir-txt" placeholder="Ou colle ici le code de l'autre téléphone"></textarea>
-            <div class="set-btns">
-                <button class="btn" onclick="directScanner()">📷 Scanner le code de l'autre</button>
-                <button class="btn" onclick="directRecevoir($('dir-txt').value)">✅ Valider le code collé</button>
-                <button class="btn" onclick="directCopier()">📋 Copier mon code</button>
-            </div>
-        </div>
-        <div class="set-btns" style="margin-top:8px;">
-            <button class="btn" style="background:#333;color:#fff;" onclick="directAnnuler()">Fermer</button>
+            <button class="btn" style="background:#333;color:#fff;" onclick="fermerQr();ouvrirParametres()">← Retour</button>
         </div>
     </div>
 </div>
@@ -555,6 +723,7 @@ let dataConn = {}, mediaConn = {}, enLigne = new Set();
 let micActif = false, canalOuvert = false;
 let connEntrante = null, appelant = null;
 let etatServeur = 'off'; // off | ok | reco
+let directActif = false;   // true quand une liaison directe (sans serveur) est établie
 
 // ===== UTILITAIRES =====
 const sanitize = s => s.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
@@ -563,9 +732,9 @@ const nomDePeer = peer => {
     const parts = peer.split('-');
     return parts[parts.length - 1];
 };
-const st = msg => { $('status').textContent = msg; console.log(msg); };
+const st = msg => { $('status').textContent = msg; console.log(msg); try { retourStatut(msg); } catch (e) {} };
 const vibrer = () => navigator.vibrate && navigator.vibrate(200);
-const stopVib = () => navigator.vibrate && navigator.vibrate(0);
+const stopVib = () => { navigator.vibrate && navigator.vibrate(0); try { sonnerie(false); } catch (e) {} };
 const fermerModal = id => $(id).classList.remove('show');
 
 function changerMode(mode) {
@@ -573,6 +742,8 @@ function changerMode(mode) {
     document.querySelectorAll('.tgl-btn').forEach(b => b.classList.remove('active'));
     event.target.classList.add('active');
     $('in-ip').style.display = mode === 'lan' ? 'block' : 'none';
+    $('in-canal').style.display = mode === 'direct' ? 'none' : '';
+    document.querySelector('button[onclick="genCode()"]').style.display = mode === 'direct' ? 'none' : '';
 }
 
 // ===== FIREBASE CONFIG =====
@@ -588,9 +759,11 @@ const FIREBASE_CONFIG = {
 };
 
 // ===== COMPTES =====
-const CLE_SESSION_INVITE = 'tw-session-guest'; // clé localStorage mode invité
+const CLE_SESSION_INVITE = 'tw-session-guest';        // session invité (localStorage)
+const clePseudoGoogle = uid => 'tw-pseudo-g-' + uid;  // pseudo choisi pour ce compte Google
 let compte = null;       // pseudo en cours de session
 let modeGoogle = false;  // true si connecté via Google
+let uidGoogle = null, emailGoogle = '';
 let firebaseApp = null;
 let firebaseAuth = null;
 
@@ -600,70 +773,103 @@ function initFirebase() {
     try {
         firebaseApp  = firebase.initializeApp(FIREBASE_CONFIG);
         firebaseAuth = firebase.auth();
-        // Écouter l'état de connexion Google (persistance automatique)
-        firebaseAuth.onAuthStateChanged(user => {
-            if (user) {
-                // Utilisateur déjà connecté → ouvrir session directement
-                const pseudo = pseudoDepuisGoogle(user);
-                ouvrirSession(pseudo, true);
-            }
-        });
     } catch (e) {
         console.warn('Firebase non initialisé :', e.message);
     }
 }
 
-// Transformer le nom Google en pseudo valide
-function pseudoDepuisGoogle(user) {
-    const nom = (user.displayName || user.email.split('@')[0] || 'user');
-    // Garder lettres, chiffres, underscore — max 20 caractères
-    return nom.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 20);
+// Pseudo libre : accents retirés, espaces -> _, caractères non autorisés ignorés
+const nettoyerPseudo = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
+const pseudoValide = p => /^[a-zA-Z0-9_]{3,20}$/.test(p);
+const MSG_PSEUDO = 'Pseudo : 3 à 20 caractères (lettres, chiffres, _).';
+
+// Aperçu en direct du pseudo tel qu'il sera enregistré
+function apercuPseudo(input, cibleId) {
+    const net = nettoyerPseudo(input.value.trim());
+    $(cibleId).textContent = net ? 'Ton pseudo : ' + net
+        : 'Lettres, chiffres et _ (3 à 20). Accents et espaces sont convertis.';
 }
 
-// Clé localStorage pour les contacts selon le compte
+// Clé localStorage pour les contacts selon le pseudo
 const cleContacts = p => 'tw-contacts-' + p.toLowerCase();
 
 function sauverContacts() {
     if (compte) localStorage.setItem(cleContacts(compte), JSON.stringify(contacts));
 }
 
-// Afficher l'écran de connexion
+// Garde les contacts quand le pseudo change
+function migrerContacts(ancien, nouveau) {
+    if (ancien.toLowerCase() === nouveau.toLowerCase()) return;
+    try {
+        const a = JSON.parse(localStorage.getItem(cleContacts(ancien)) || '[]');
+        const n = JSON.parse(localStorage.getItem(cleContacts(nouveau)) || '[]');
+        localStorage.setItem(cleContacts(nouveau), JSON.stringify([...new Set([...n, ...a])]));
+        localStorage.removeItem(cleContacts(ancien));
+    } catch (e) {}
+}
+
+// Écran de connexion
 function afficherAuth() {
+    $('auth-login').style.display = 'block';
+    $('auth-pseudo').style.display = 'none';
     $('au-pseudo-guest').value = localStorage.getItem('tw-last-guest') || '';
+    apercuPseudo($('au-pseudo-guest'), 'apercu-guest');
     $('auth-err').textContent = '';
+    $('btn-google').disabled = false;
     $('auth').classList.add('show');
 }
 
-// Démarrage : vérifier si une session existe
+// Écran « Choisis ton pseudo » : première connexion Google, ou changement de pseudo (modif = true)
+function afficherChoixPseudo(modif) {
+    $('auth-login').style.display = 'none';
+    $('auth-pseudo').style.display = 'block';
+    $('pseudo-titre').textContent = modif ? '✏️ Changer de pseudo' : '✏️ Choisis ton pseudo';
+    $('pseudo-info').textContent = modif
+        ? 'Tes contacts sont conservés.'
+        : 'Connecté avec ' + (emailGoogle || 'Google') + ". Tes contacts utiliseront ce pseudo pour t'ajouter.";
+    $('pseudo-retour').textContent = modif ? 'Annuler' : '← Retour';
+    $('pseudo-err').textContent = '';
+    const champ = $('au-pseudo-choix');
+    champ.value = modif ? compte : '';
+    apercuPseudo(champ, 'apercu-choix');
+    $('auth').classList.add('show');
+    setTimeout(() => champ.focus(), 50);
+}
+
+// Démarrage : session Google (restaurée par Firebase) ou session invité
 function demarrerAuth() {
-    // 1. Firebase va appeler onAuthStateChanged si connecté Google → pas besoin de vérifier ici
-    // 2. Sinon, vérifier session invité
-    if (!firebaseAuth) {
-        // Firebase non dispo → vérifier session invité uniquement
-        const g = localStorage.getItem(CLE_SESSION_INVITE);
-        if (g) ouvrirSession(g, false); else afficherAuth();
+    const invite = localStorage.getItem(CLE_SESSION_INVITE);
+    if (!firebaseAuth) { // Firebase non configuré : seul le mode invité existe
+        if (invite) ouvrirSession(invite, false); else afficherAuth();
         return;
     }
-    // Firebase dispo : onAuthStateChanged gère la reconnexion Google automatique.
-    // On vérifie quand même la session invité en secours (si pas de user Google dans les 1.5s)
-    setTimeout(() => {
-        if (!compte) {
-            const g = localStorage.getItem(CLE_SESSION_INVITE);
-            if (g) ouvrirSession(g, false); else afficherAuth();
-        }
-    }, 1500);
+    let premier = true;
+    firebaseAuth.onAuthStateChanged(user => {
+        const demarrage = premier; premier = false;
+        if (user) return sessionGoogle(user);
+        if (demarrage && !compte) { if (invite) ouvrirSession(invite, false); else afficherAuth(); }
+    });
+}
+
+// Compte Google connecté : pseudo déjà choisi -> on entre, sinon on le demande
+function sessionGoogle(user) {
+    if (compte && modeGoogle && uidGoogle === user.uid) return;
+    uidGoogle = user.uid;
+    emailGoogle = user.email || '';
+    const pseudo = localStorage.getItem(clePseudoGoogle(user.uid));
+    if (pseudo && pseudoValide(pseudo)) ouvrirSession(pseudo, true);
+    else afficherChoixPseudo(false);
 }
 
 // Ouvrir une session (Google ou invité)
 function ouvrirSession(pseudo, google) {
-    if (compte) return; // déjà en session (évite double appel)
-    compte    = pseudo;
+    compte     = pseudo;
     modeGoogle = !!google;
     try { contacts = JSON.parse(localStorage.getItem(cleContacts(pseudo)) || '[]'); } catch (e) { contacts = []; }
     $('in-pseudo').value    = pseudo;
     $('in-pseudo').readOnly = true;
-    const badge = modeGoogle ? '🔵 ' + pseudo + ' ⏏' : '👤 ' + pseudo + ' ⏏';
-    $('lien-compte').textContent = badge;
+    $('lien-compte').textContent = (modeGoogle ? '🔵 ' : '👤 ') + pseudo + ' ⏏';
     $('auth').classList.remove('show');
     st((modeGoogle ? '🔵 Google : ' : '👤 Invité : ') + pseudo);
 }
@@ -680,52 +886,80 @@ async function connexionGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.addScope('email');
         provider.addScope('profile');
-        // Popup sur desktop, redirect sur mobile
-        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-        if (isMobile) {
-            await firebaseAuth.signInWithRedirect(provider);
-            // onAuthStateChanged gèrera la suite au retour
-        } else {
-            const result = await firebaseAuth.signInWithPopup(provider);
-            const pseudo = pseudoDepuisGoogle(result.user);
-            ouvrirSession(pseudo, true);
-        }
+        // Popup sur desktop, redirect sur mobile ; onAuthStateChanged (sessionGoogle) gère la suite
+        if (/Mobi|Android/i.test(navigator.userAgent)) await firebaseAuth.signInWithRedirect(provider);
+        else await firebaseAuth.signInWithPopup(provider);
     } catch (e) {
-        $('auth-err').textContent = '❌ ' + (e.message || 'Erreur de connexion Google');
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request')
+            $('auth-err').textContent = '❌ ' + (e.message || 'Erreur de connexion Google');
+    } finally {
         $('btn-google').disabled = false;
     }
 }
 
 // ===== CONNEXION INVITÉE =====
 function connexionInvite() {
-    const pseudo = $('au-pseudo-guest').value.trim();
+    const pseudo = nettoyerPseudo($('au-pseudo-guest').value.trim());
     $('auth-err').textContent = '';
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(pseudo)) {
-        $('auth-err').textContent = 'Pseudo : 3 à 20 caractères (lettres, chiffres, _).';
-        return;
-    }
+    if (!pseudoValide(pseudo)) { $('auth-err').textContent = MSG_PSEUDO; return; }
     localStorage.setItem(CLE_SESSION_INVITE, pseudo);
     localStorage.setItem('tw-last-guest', pseudo);
     ouvrirSession(pseudo, false);
 }
 
-// Touche Entrée dans le champ pseudo invité
-$('au-pseudo-guest') && $('au-pseudo-guest').addEventListener('keydown', e => {
-    if (e.key === 'Enter') connexionInvite();
-});
+// ===== CHOIX / CHANGEMENT DE PSEUDO =====
+function changerPseudo() {
+    if (!compte) return;
+    fermerModal('modal-set');
+    afficherChoixPseudo(true);
+}
+
+function validerPseudo() {
+    const pseudo = nettoyerPseudo($('au-pseudo-choix').value.trim());
+    $('pseudo-err').textContent = '';
+    if (!pseudoValide(pseudo)) { $('pseudo-err').textContent = MSG_PSEUDO; return; }
+
+    if (compte) { // changement de pseudo pendant une session
+        const ancien = compte;
+        if (pseudo !== ancien) {
+            if (peer) {
+                if (!confirm('Changer de pseudo te déconnecte du canal. Continuer ?')) return;
+                deconnecter();
+            }
+            migrerContacts(ancien, pseudo);
+            if (modeGoogle) localStorage.setItem(clePseudoGoogle(uidGoogle), pseudo);
+            else { localStorage.setItem(CLE_SESSION_INVITE, pseudo); localStorage.setItem('tw-last-guest', pseudo); }
+            ouvrirSession(pseudo, modeGoogle);
+            st('✏️ Pseudo changé : ' + pseudo);
+        }
+        $('auth').classList.remove('show');
+        return;
+    }
+
+    // Première connexion Google : le pseudo choisi est mémorisé pour ce compte
+    if (!uidGoogle) { afficherAuth(); return; }
+    localStorage.setItem(clePseudoGoogle(uidGoogle), pseudo);
+    ouvrirSession(pseudo, true);
+}
+
+function annulerPseudo() {
+    if (compte) { $('auth').classList.remove('show'); return; } // simple changement : on ferme
+    // Première connexion : on abandonne et on se déconnecte de Google
+    if (firebaseAuth) firebaseAuth.signOut().catch(() => {});
+    uidGoogle = null; emailGoogle = '';
+    afficherAuth();
+}
+
+// Touche Entrée dans les champs pseudo
+$('au-pseudo-guest').addEventListener('keydown', e => { if (e.key === 'Enter') connexionInvite(); });
+$('au-pseudo-choix').addEventListener('keydown', e => { if (e.key === 'Enter') validerPseudo(); });
 
 // ===== DÉCONNEXION DU COMPTE =====
 function deconnecterCompte() {
-    if (peer || modeDirect) deconnecter();
-    // Déconnecter Firebase si connecté Google
-    if (modeGoogle && firebaseAuth) {
-        firebaseAuth.signOut().catch(() => {});
-    }
-    // Effacer session invité
+    if (peer) deconnecter();
+    if (modeGoogle && firebaseAuth) firebaseAuth.signOut().catch(() => {});
     localStorage.removeItem(CLE_SESSION_INVITE);
-    compte    = null;
-    modeGoogle = false;
-    contacts   = [];
+    compte = null; modeGoogle = false; uidGoogle = null; emailGoogle = ''; contacts = [];
     $('in-pseudo').readOnly = false;
     $('in-pseudo').value    = '';
     $('lien-compte').textContent = '';
@@ -748,7 +982,7 @@ async function supprimerCompte() {
 
 // ===== ÉTAT RÉSEAU =====
 function etatReseau() {
-    if (modeDirect) return { cls:'net-ok', txt:'Direct Wi-Fi', long:'📶 Liaison directe Wi-Fi' };
+    if (directActif) return { cls:'net-ok', txt:'Direct', long:'📶 Connexion directe' };
     if (!navigator.onLine) return { cls:'net-out', txt:'Hors ligne', long:'❌ Pas d\'Internet' };
     if (etatServeur === 'ok')   return { cls:'net-ok',   txt:'Connecté', long:'🟢 Connecté au serveur' };
     if (etatServeur === 'reco') return { cls:'net-reco', txt:'Reconnexion…', long:'🟠 Reconnexion en cours' };
@@ -761,7 +995,7 @@ function majReseau() {
     if (!net) return;
     net.className = e.cls;
     let txt = e.txt;
-    if (etatServeur === 'ok' && navigator.onLine && contacts.length && !modeDirect)
+    if (etatServeur === 'ok' && navigator.onLine && contacts.length)
         txt += ' · ' + [...enLigne].filter(n => contacts.includes(n)).length + '/' + contacts.length;
     $('net-txt').textContent = txt;
 }
@@ -770,7 +1004,7 @@ window.addEventListener('online', () => {
     majReseau();
     if (peer && peer.disconnected) try { peer.reconnect(); } catch (e) {}
 });
-window.addEventListener('offline', () => { majReseau(); if (!modeDirect) st('📶 Hors ligne : choisis « Direct » pour parler en Wi-Fi'); });
+window.addEventListener('offline', majReseau);
 if (navigator.connection) navigator.connection.addEventListener('change', () => {
     if ($('modal-set').classList.contains('show')) ouvrirParametres();
 });
@@ -798,11 +1032,13 @@ function ouvrirParametres() {
     if (btnSuppr)   btnSuppr.style.display = modeGoogle ? 'none' : 'block';
     $('set-pseudo').textContent = monPseudo;
     $('set-canal').textContent = monCanal;
-    $('set-mode').textContent = modeReseau === 'lan' ? '📡 Local' : '🌐 Internet';
+    $('set-mode').textContent = modeReseau === 'lan' ? '📡 Local' : modeReseau === 'direct' ? '📶 Direct' : '🌐 Internet';
     const c = navigator.connection;
     $('set-net').textContent = etatReseau().long + (c && c.effectiveType ? ' · ' + c.effectiveType.toUpperCase() : '');
     $('set-online').textContent = [...enLigne].filter(n => contacts.includes(n)).length + ' / ' + contacts.length;
     majBruitUI();
+    majTouchesUI();
+    majApparenceUI();
     $('modal-set').classList.add('show');
 }
 
@@ -847,12 +1083,11 @@ function resetContacts() {
 }
 
 function deconnecter() {
-    fermerDirect();
-    repVider();
     Object.values(dataConn).forEach(c => { try { c.send({ type: 'raccroche', de: monPseudo }); c.close(); } catch (e) {} });
     Object.values(mediaConn).forEach(c => { try { c.close(); } catch (e) {} });
     dataConn = {}; mediaConn = {}; enLigne.clear();
     if (peer) { peer.destroy(); peer = null; }
+    directFermer();
     if (micActif) couperMicro();
     canalOuvert = false;
     $('bcast-btn').classList.remove('actif');
@@ -878,6 +1113,123 @@ function deconnecter() {
         b[0].classList.remove('active'); b[1].classList.add('active');
     }
 })();
+
+// ===== LECTURE DU SON REÇU =====
+// Serveurs ICE : le STUN seul ne suffit pas sur 4G (NAT strict). Le TURN relaie l'audio quand
+// la connexion directe est impossible.
+//
+// OPTION RECOMMANDÉE (fiable, gratuit 20 Go/mois) : crée un compte sur metered.ca (Open Relay),
+// puis renseigne ici le nom de ton app et ta clé API. Les identifiants TURN sont alors récupérés
+// automatiquement à chaque connexion.
+const METERED_APP = '';   // ex : 'monapp'  (-> monapp.metered.live)
+const METERED_KEY = '';   // ta clé API Metered
+//
+// Sinon, ou en secours : relais public partagé (identifiants publics, sans garantie de disponibilité).
+const ICE_DEFAUT = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'turn:openrelay.metered.ca:80',                 username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443',                username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' }
+];
+let ICE_CONFIG = { iceServers: ICE_DEFAUT };
+
+async function construireIce() {
+    if (!METERED_APP || !METERED_KEY) return { iceServers: ICE_DEFAUT };
+    try {
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), 4000);
+        const r = await fetch('https://' + METERED_APP + '.metered.live/api/v1/turn/credentials?apiKey=' + encodeURIComponent(METERED_KEY), { signal: ctl.signal });
+        clearTimeout(t);
+        const liste = await r.json();
+        if (!Array.isArray(liste) || !liste.length) throw new Error('réponse vide');
+        console.log('✅ TURN Metered chargé (' + liste.length + ' serveurs)');
+        return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, ...liste] };
+    } catch (e) {
+        console.warn('TURN Metered indisponible, relais public utilisé :', e);
+        return { iceServers: ICE_DEFAUT };
+    }
+}
+
+// ===== CODEC OPUS =====
+// WebRTC négocie Opus (obligatoire) ; on règle ses paramètres pour la voix :
+// mono, FEC (récupère les paquets perdus en 4G), DTX (presque rien envoyé pendant les silences),
+// débit moyen plafonné, paquets de 20 ms.
+function sdpOpus(sdp) {
+    const m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/);
+    if (!m) return sdp;
+    const pt = m[1];
+    const params = 'minptime=10;useinbandfec=1;usedtx=1;stereo=0;sprop-stereo=0;cbr=0;maxplaybackrate=48000;maxaveragebitrate=' + opts.debit;
+    const lignes = 'a=fmtp:' + pt + ' ' + params + (/a=ptime:/.test(sdp) ? '' : '\r\na=ptime:20');
+    const re = new RegExp('a=fmtp:' + pt + ' [^\\r\\n]*');
+    if (re.test(sdp)) return sdp.replace(re, lignes);
+    return sdp.replace(new RegExp('(a=rtpmap:' + pt + ' opus/48000/2)'), '$1\r\n' + lignes);
+}
+
+// Plafond de débit + priorité haute sur l'émetteur audio de l'appel
+function reglerEmission(call) {
+    try {
+        call.peerConnection.getSenders().forEach(sn => {
+            if (!sn.track || sn.track.kind !== 'audio') return;
+            const p = sn.getParameters();
+            if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+            p.encodings[0].maxBitrate = opts.debit;
+            p.encodings[0].priority = 'high';
+            p.encodings[0].networkPriority = 'high';
+            sn.setParameters(p).catch(e => console.warn('setParameters:', e));
+        });
+    } catch (e) { console.warn('reglerEmission:', e); }
+}
+
+// Indique si l'audio passe en direct ou via le relais TURN
+async function logRoute(call) {
+    try {
+        const pc = call.peerConnection;
+        const stats = await pc.getStats();
+        let pair = null;
+        stats.forEach(r => { if (r.type === 'transport' && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId); });
+        if (!pair) stats.forEach(r => { if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated) pair = r; });
+        if (!pair) return;
+        const l = stats.get(pair.localCandidateId), d = stats.get(pair.remoteCandidateId);
+        const relais = (l && l.candidateType === 'relay') || (d && d.candidateType === 'relay');
+        let codec = '';
+        stats.forEach(r => {
+            if (r.type === 'codec' && /opus/i.test(r.mimeType || '')) {
+                codec = ' · Opus' + ((r.sdpFmtpLine || '').includes('useinbandfec=1') ? ' + FEC' : '');
+            }
+        });
+        st((relais ? '🔁 Audio via relais TURN' : '⚡ Audio en connexion directe') + codec);
+    } catch (e) { console.warn('logRoute:', e); }
+}
+
+function jouerFlux(flux, call) {
+    const a = $('audio');
+    a.srcObject = flux;
+    a.muted = false;
+    a.volume = 1;
+    console.log('🔊 Flux reçu, pistes audio :', flux.getAudioTracks().length);
+    surveillerVoix(flux);
+    if (call) setTimeout(() => { reglerEmission(call); logRoute(call); }, 2000);
+    const p = a.play();
+    if (p && p.catch) p.catch(e => {
+        console.warn('Lecture bloquée :', e.name);
+        $('son-bloque').style.display = 'block';
+    });
+    // Certains navigateurs ne livrent le son qu'à l'arrivée de la piste
+    flux.addEventListener('addtrack', () => a.play().catch(() => {}));
+}
+
+function debloquerSon() {
+    const a = $('audio');
+    a.play().then(() => { $('son-bloque').style.display = 'none'; st('🔊 Son activé'); })
+            .catch(e => st('❌ Son bloqué : ' + e.name));
+}
+// N'importe quel toucher relance la lecture si elle était bloquée
+document.addEventListener('pointerdown', () => {
+    const a = $('audio');
+    if (a.srcObject && a.paused) debloquerSon();
+});
 
 // ===== RNNOISE : ISOLATION DE LA VOIX =====
 // Micro -> RNNoise (WASM / AudioWorklet, 48 kHz) -> flux envoyé aux contacts
@@ -907,7 +1259,10 @@ async function creerPipelineRnnoise(stream) {
         nrCtx.onstatechange = () => {
             if (nrCtx && nrCtx.state === 'suspended') nrCtx.resume().catch(() => {});
         };
-        if (nrCtx.state === 'suspended') await nrCtx.resume();
+        if (nrCtx.state !== 'running') {
+            await Promise.race([nrCtx.resume(), new Promise(r => setTimeout(r, 1500))]);
+        }
+        if (nrCtx.state !== 'running') throw new Error('AudioContext bloqué (' + nrCtx.state + ')');
         bruitEtat = 'on';
         console.log('✅ RNNoise actif');
         return dest.stream;
@@ -989,7 +1344,8 @@ async function getMic() {
             audio: {
                 echoCancellation: true,
                 noiseSuppression: !rnnoiseOn,
-                autoGainControl: true
+                autoGainControl: true,
+                channelCount: 1
             }
         };
 
@@ -1054,19 +1410,10 @@ async function getMic() {
 
 // ===== CONNEXION =====
 async function connecter() {
-    repInit();
     const pseudo = $('in-pseudo').value.trim();
     const canal = $('in-canal').value.trim();
 
-    if (!navigator.onLine && modeReseau === 'internet') { basculerDirect(); st("📶 Pas d'Internet : liaison directe"); }
-    if (modeReseau === 'direct') {
-        if (!pseudo) { alert('Entre ton nom !'); return; }
-        monPseudo = pseudo; monCanal = 'direct';
-        if (!(await getMic())) { alert("Impossible d'accéder au microphone. Autorise l'accès et réessaie."); return; }
-        ouvrirDirect();
-        return;
-    }
-
+    if (modeReseau === 'direct') { directOuvrir(); return; }
     if (!pseudo || !canal) { alert('Entre pseudo et canal !'); return; }
 
     monPseudo = pseudo;
@@ -1079,15 +1426,16 @@ async function connecter() {
         return;
     }
 
+    ICE_CONFIG = await construireIce();
     let cfg;
     if (modeReseau === 'lan') {
         const ip = $('in-ip').value.trim();
         if (!ip) { alert('Entre l\'IP du serveur local !'); return; }
         const [h, p] = ip.includes(':') ? ip.split(':') : [ip,'9000'];
-        cfg = { host:h, port:parseInt(p), path:'/', secure:false };
+        cfg = { host:h, port:parseInt(p), path:'/', secure:false, config: ICE_CONFIG };
         st('Connexion au serveur local ' + h + ':' + p + '...');
     } else {
-        cfg = { host:'0.peerjs.com', port:443, path:'/', secure:true };
+        cfg = { host:'0.peerjs.com', port:443, path:'/', secure:true, config: ICE_CONFIG };
         st('Connexion PeerJS Cloud...');
     }
 
@@ -1108,18 +1456,17 @@ async function connecter() {
         console.error('Peer error:', err);
         if (err.type === 'unavailable-id') alert('Pseudo déjà pris sur ce canal !');
         else if (err.type === 'peer-unavailable') st('❌ Contact indisponible');
-        else if (['network','server-error','socket-error','socket-closed'].includes(err.type)) st('❌ Serveur injoignable — essaie le mode Direct');
         else st('❌ Erreur: ' + err.type);
     });
 
     peer.on('call', call => {
         console.log('Appel reçu de:', call.peer);
-        call.answer(localStream || undefined);
+        call.answer(localStream || undefined, { sdpTransform: sdpOpus });
         const n = nomDePeer(call.peer);
         mediaConn[n] = call;
         call.on('stream', s => { 
             console.log('Stream reçu');
-            brancherAudio(s); 
+            jouerFlux(s, call); 
         });
         call.on('close', () => delete mediaConn[n]);
         call.on('error', e => console.error('Media error:', e));
@@ -1169,6 +1516,7 @@ function gererMsg(conn, d) {
         $('caller-name').textContent = d.de;
         $('call-notif').classList.add('show');
         vibrer();
+        sonnerie(true);
         st('📞 Appel de ' + d.de);
     }
     if (d.type === 'appel-termine') {
@@ -1271,11 +1619,11 @@ function demarrerAudio(nom) {
         return;
     }
     console.log('Démarrage appel audio avec:', nom);
-    const call = peer.call(peerId(monCanal, nom), localStream);
+    const call = peer.call(peerId(monCanal, nom), localStream, { sdpTransform: sdpOpus });
     mediaConn[nom] = call;
     call.on('stream', s => {
         console.log('Stream reçu de:', nom);
-        brancherAudio(s);
+        jouerFlux(s, call);
     });
     call.on('close', () => {
         console.log('Appel fermé');
@@ -1344,13 +1692,14 @@ function activerMicro() {
     });
 
     pttBtn.classList.add('actif');
-    pttBtn.textContent = '🔴 En ligne...';
+    pttBtn.textContent = 'En ligne';
     st('🔴 Micro ACTIVÉ');
 }
 
 function couperMicro() {
     if (!localStream) return;
 
+    const etait = micActif;
     micActif = false;
     const tracks = localStream.getAudioTracks();
     tracks.forEach(t => {
@@ -1359,8 +1708,8 @@ function couperMicro() {
     });
 
     pttBtn.classList.remove('actif');
-    pttBtn.textContent = '🎙️ Parler';
-    st('⚫ Micro coupé');
+    pttBtn.textContent = 'Parler';
+    if (etait) st('⚫ Micro coupé');
 }
 
 pttBtn.addEventListener('mousedown', activerMicro);
@@ -1392,9 +1741,9 @@ $('bcast-btn').addEventListener('click', async () => {
     }
 
     contacts.forEach(nom => {
-        const call = peer.call(peerId(monCanal, nom), localStream);
+        const call = peer.call(peerId(monCanal, nom), localStream, { sdpTransform: sdpOpus });
         mediaConn[nom] = call;
-        call.on('stream', s => { brancherAudio(s); });
+        call.on('stream', s => { jouerFlux(s, call); });
         call.on('close', () => delete mediaConn[nom]);
         call.on('error', console.error);
     });
@@ -1404,6 +1753,396 @@ $('bcast-btn').addEventListener('click', async () => {
     btn.textContent = '🔇 Fermer canal';
     st('📢 Canal ouvert (' + contacts.length + ' contact(s)) — Maintiens Parler');
 });
+
+// ===== MODE DIRECT (P2P sans serveur : Wi-Fi Direct / partage de connexion / même Wi-Fi) =====
+// Pas de serveur : les deux téléphones échangent 2 codes (QR ou texte), puis l'audio passe en WebRTC direct.
+let dPc = null, dDc = null, dNom = '', dRole = '', dFlux = null;
+const dB64 = u => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const dUnB64 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const dMsg = m => { $('dir-st').textContent = m; };
+
+// Code = JSON compressé (deflate) en base64url ; 'z' = compressé, 'r' = brut (navigateur sans compression)
+async function dCoder(obj) {
+    const txt = JSON.stringify(obj);
+    if (!window.CompressionStream) return 'r' + dB64(new TextEncoder().encode(txt));
+    const flux = new Blob([txt]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return 'z' + dB64(new Uint8Array(await new Response(flux).arrayBuffer()));
+}
+async function dDecoder(code) {
+    const c = code.trim().replace(/\s+/g, '');
+    const u = dUnB64(c.slice(1));
+    if (c[0] === 'r') return JSON.parse(new TextDecoder().decode(u));
+    const flux = new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return JSON.parse(await new Response(flux).text());
+}
+
+// Attend la fin de la collecte des candidats ICE (pas de trickle : tout tient dans un seul code)
+const dAttendreICE = c => new Promise(ok => {
+    if (c.iceGatheringState === 'complete') return ok();
+    const ev = () => { if (c.iceGatheringState === 'complete') fin(); };
+    const fin = () => { c.removeEventListener('icegatheringstatechange', ev); ok(); };
+    c.addEventListener('icegatheringstatechange', ev);
+    setTimeout(fin, 3000);
+});
+
+function dNouveauPC() {
+    const c = new RTCPeerConnection({ iceServers: [] });   // aucun serveur STUN/TURN : réseau local uniquement
+    localStream.getTracks().forEach(t => c.addTrack(t, localStream));
+    c.ontrack = e => { jouerFlux(e.streams[0] || new MediaStream([e.track])); };
+    c.onconnectionstatechange = () => {
+        if (dPc !== c) return;
+        if (c.connectionState === 'connected') directConnecte();
+        else if (c.connectionState === 'failed' || c.connectionState === 'closed') directPerdu();
+    };
+    return c;
+}
+function dConfigDC(ch) {
+    ch.onmessage = e => { if (e.data === 'bye') directPerdu(); };
+    ch.onclose = () => directPerdu();
+}
+
+async function dPreparer() {
+    const pseudo = $('in-pseudo').value.trim();
+    if (!pseudo) { alert('Entre ton nom !'); return false; }
+    monPseudo = pseudo;
+    if (!(await getMic())) { alert("Impossible d'accéder au microphone. Autorise l'accès et réessaie."); return false; }
+    return true;
+}
+
+function directOuvrir() {
+    directAnnulerScan();
+    $('dir-choix').style.display = 'flex';
+    $('dir-code').style.display = 'none';
+    $('dir-saisie').style.display = 'none';
+    dMsg('');
+    $('modal-direct').classList.add('show');
+}
+
+async function dAfficherCode(titre, obj) {
+    const code = await dCoder(obj);
+    $('dir-choix').style.display = 'none';
+    $('dir-code-titre').textContent = titre;
+    $('dir-out').value = code;
+    try {
+        const qr = qrcode(0, 'L'); qr.addData(code); qr.make();
+        $('dir-qr').innerHTML = qr.createImgTag(3, 0);
+    } catch (e) {
+        $('dir-qr').innerHTML = '<span style="color:#1a1a2e;font-size:11px;">QR indisponible : copie le code</span>';
+    }
+    $('dir-code').style.display = 'block';
+}
+
+// Téléphone A : crée l'invitation, puis attend la réponse de B
+async function directCreer() {
+    if (!(await dPreparer())) return;
+    directFermer();
+    dRole = 'hote';
+    dPc = dNouveauPC();
+    dDc = dPc.createDataChannel('tw'); dConfigDC(dDc);
+    dMsg('⏳ Création du code...');
+    try {
+        await dPc.setLocalDescription(await dPc.createOffer());
+        await dAttendreICE(dPc);
+        await dAfficherCode("1/2 · Montre ce code à l'autre téléphone", { n: monPseudo, t: 'o', d: dPc.localDescription.sdp });
+    } catch (e) { dMsg('❌ ' + e.message); return; }
+    $('dir-saisie-titre').textContent = '2/2 · Scanne ou colle son code de réponse';
+    $('dir-in').value = '';
+    $('dir-saisie').style.display = 'block';
+    dMsg('');
+}
+
+// Téléphone B : saisit l'invitation de A
+async function directRejoindre() {
+    if (!(await dPreparer())) return;
+    directFermer();
+    dRole = 'invite';
+    $('dir-choix').style.display = 'none';
+    $('dir-saisie-titre').textContent = "1/2 · Scanne ou colle le code de l'autre téléphone";
+    $('dir-in').value = '';
+    $('dir-saisie').style.display = 'block';
+    dMsg('');
+}
+
+// Valide le code saisi/scanné : réponse pour A, invitation pour B
+async function directValider() {
+    const brut = $('dir-in').value.trim();
+    if (!brut) { dMsg("Colle ou scanne d'abord un code."); return; }
+    directAnnulerScan();
+    let m;
+    try { m = await dDecoder(brut); } catch (e) { dMsg('❌ Code illisible : copie-le en entier.'); return; }
+    try {
+        dNom = nettoyerPseudo(m.n || '') || 'ami';
+        if (dRole === 'hote' && m.t === 'a') {
+            dMsg('⏳ Connexion...');
+            await dPc.setRemoteDescription({ type: 'answer', sdp: m.d });
+        } else if (dRole === 'invite' && m.t === 'o') {
+            dPc = dNouveauPC();
+            dPc.ondatachannel = e => { dDc = e.channel; dConfigDC(dDc); };
+            dMsg('⏳ Création de la réponse...');
+            await dPc.setRemoteDescription({ type: 'offer', sdp: m.d });
+            await dPc.setLocalDescription(await dPc.createAnswer());
+            await dAttendreICE(dPc);
+            $('dir-saisie').style.display = 'none';
+            await dAfficherCode("2/2 · Montre ce code à l'autre téléphone", { n: monPseudo, t: 'a', d: dPc.localDescription.sdp });
+            dMsg("⏳ En attente de l'autre téléphone...");
+        } else {
+            dMsg(dRole === 'hote' ? "❌ Il faut le code de réponse de l'autre téléphone." : "❌ Il faut le code de celui qui a créé la connexion.");
+        }
+    } catch (e) { dMsg('❌ ' + e.message); }
+}
+
+// Liaison établie : on entre dans l'écran principal (PTT direct, pas d'appel à faire sonner)
+function directConnecte() {
+    if (directActif) return;
+    directActif = true;
+    const n = dNom;
+    mediaConn[n] = { close() {} };
+    dataConn[n] = { open: true, close() {}, send(m) { if (m.type === 'raccroche' && dDc && dDc.readyState === 'open') dDc.send('bye'); } };
+    enLigne.add(n);
+    if (!contacts.includes(n)) { contacts.push(n); sauverContacts(); }
+    etatServeur = 'ok';
+    $('card-contacts').style.display = 'block';
+    $('ptt-zone').style.display = 'flex';
+    $('btn-set').style.visibility = 'visible';
+    $('bcast-btn').style.display = 'none';
+    afficherContacts();
+    fermerModal('modal-direct');
+    st('📶 Connecté en direct avec ' + n);
+}
+
+function directPerdu() {
+    if (!directActif) return;
+    const n = dNom;
+    deconnecter();
+    st('📵 ' + n + ' a quitté la connexion directe');
+}
+
+function directFermer() {
+    directActif = false;
+    try { if (dDc) dDc.close(); } catch (e) {}
+    try { if (dPc) dPc.close(); } catch (e) {}
+    dPc = dDc = null;
+    $('bcast-btn').style.display = '';
+}
+
+// Scan du QR : BarcodeDetector (Chrome Android) ou jsQR
+async function directScanner() {
+    directAnnulerScan();
+    const det = window.BarcodeDetector ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+    if (!det && !window.jsQR) { dMsg('Scanner indisponible : colle le code.'); return; }
+    try { dFlux = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); }
+    catch (e) { dMsg('❌ Caméra refusée : colle le code à la place.'); return; }
+    const v = $('dir-video');
+    v.srcObject = dFlux; v.style.display = 'block'; v.play().catch(() => {});
+    const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+    const boucle = async () => {
+        if (!dFlux) return;
+        let txt = '';
+        try {
+            if (det) { const r = await det.detect(v); if (r.length) txt = r[0].rawValue; }
+            else if (v.videoWidth) {
+                cv.width = v.videoWidth; cv.height = v.videoHeight;
+                cx.drawImage(v, 0, 0);
+                const im = cx.getImageData(0, 0, cv.width, cv.height);
+                const r = jsQR(im.data, im.width, im.height); if (r) txt = r.data;
+            }
+        } catch (e) {}
+        if (txt) { $('dir-in').value = txt; directValider(); return; }
+        setTimeout(boucle, 250);
+    };
+    boucle();
+}
+function directAnnulerScan() {
+    if (dFlux) { dFlux.getTracks().forEach(t => t.stop()); dFlux = null; }
+    $('dir-video').style.display = 'none';
+}
+
+function directCopier() {
+    const t = $('dir-out').value;
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(
+        () => dMsg('📋 Code copié'),
+        () => { $('dir-out').select(); dMsg('Code sélectionné : copie-le à la main'); });
+}
+
+function directAnnuler() {
+    directAnnulerScan();
+    fermerModal('modal-direct');
+    if (!directActif) directFermer();   // abandon de la connexion en cours
+}
+
+// ===== TOUCHES PHYSIQUES + RETOUR SENSORIEL (utilisation à l'aveugle) =====
+const lireJson = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch (e) { return def; } };
+let opts = Object.assign({ sons:true, vib:true, voix:false, toggle:false, debit:24000 }, lireJson('tw-opts', {}));
+let touche = lireJson('tw-touche', null);   // { code, key, label }
+let captureTouche = false, sonCtx = null, sonnerieTimer = null, vadTimer = null;
+
+// Sons (bips) générés, sans fichier
+function bip(notes) {
+    if (!opts.sons) return;
+    try {
+        sonCtx = sonCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (sonCtx.state === 'suspended') sonCtx.resume();
+        let t = sonCtx.currentTime;
+        notes.forEach(([f, d, type]) => {
+            const o = sonCtx.createOscillator(), g = sonCtx.createGain();
+            o.type = type || 'sine'; o.frequency.value = f;
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(0.25, t + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + d / 1000);
+            o.connect(g); g.connect(sonCtx.destination);
+            o.start(t); o.stop(t + d / 1000 + 0.02);
+            t += d / 1000 + 0.03;
+        });
+    } catch (e) {}
+}
+const vib = p => { if (opts.vib && navigator.vibrate) navigator.vibrate(p); };
+
+function parler(txt) {
+    if (!opts.voix || !window.speechSynthesis) return;
+    const net = tr(txt).replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F]/gu, '').trim();
+    if (!net) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(net);
+    u.lang = LANGUE === 'en' ? 'en-US' : 'fr-FR'; u.rate = 1.1;
+    speechSynthesis.speak(u);
+}
+
+// Chaque message d'état déclenche un retour : bip + vibration + voix
+function retourStatut(msg) {
+    const m = msg.trim();
+    if (m.startsWith('🔴')) { bip([[880, 70], [1320, 90]]); vib(60); return; }              // micro ouvert
+    if (m.startsWith('⚫')) { bip([[1320, 70], [660, 90]]); vib([30, 50, 30]); return; }    // micro coupé
+    if (/^(❌|⚠)/.test(m)) { bip([[220, 220, 'square']]); vib([200, 80, 200]); parler(m); return; }
+    if (m.startsWith('📞')) { parler(m); return; }                                           // la sonnerie gère le son
+    if (/^(📵|🟠|📢)/.test(m)) { bip([[440, 120], [330, 160]]); vib([80, 60, 80]); parler(m); return; }
+    if (m.startsWith('✅') && !/Micro|App active/.test(m)) { bip([[523, 80], [659, 80], [784, 120]]); vib([40, 40, 40]); parler(m); }
+}
+
+// Sonnerie d'appel entrant : répétée jusqu'à réponse
+function sonnerie(on) {
+    clearInterval(sonnerieTimer); sonnerieTimer = null;
+    if (!on) return;
+    const tour = () => { bip([[880, 150], [660, 150], [880, 150]]); vib([300, 150, 300]); };
+    tour(); sonnerieTimer = setInterval(tour, 2000);
+}
+
+// Détecte quand l'autre parle : clic au début, clic plus grave à la fin
+function surveillerVoix(flux) {
+    clearInterval(vadTimer);
+    try {
+        sonCtx = sonCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const an = sonCtx.createAnalyser(); an.fftSize = 512;
+        sonCtx.createMediaStreamSource(flux).connect(an);
+        const buf = new Uint8Array(an.fftSize);
+        let parle = false, dernier = 0;
+        vadTimer = setInterval(() => {
+            an.getByteTimeDomainData(buf);
+            let sum = 0;
+            for (const v of buf) { const x = (v - 128) / 128; sum += x * x; }
+            const now = Date.now();
+            if (Math.sqrt(sum / buf.length) > 0.03) {
+                dernier = now;
+                if (!parle) { parle = true; bip([[600, 40]]); vib(20); }
+            } else if (parle && now - dernier > 700) { parle = false; bip([[450, 40]]); }
+        }, 150);
+    } catch (e) { console.warn('surveillerVoix:', e); }
+}
+
+// ----- Touche physique d'émission (clavier, télécommande/PTT Bluetooth, etc.) -----
+const estChamp = t => t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);
+const toucheCorrespond = e => touche && ((touche.code && e.code === touche.code) || (!touche.code && e.key === touche.key));
+const appelEnAttente = () => $('call-notif').classList.contains('show');
+
+document.addEventListener('keydown', e => {
+    if (captureTouche) {
+        e.preventDefault(); e.stopPropagation();
+        captureTouche = false;
+        if (document.activeElement) document.activeElement.blur();
+        if (e.key === 'Escape') { st('Assignation annulée'); majTouchesUI(); return; }
+        touche = { code: e.code, key: e.key, label: e.key === ' ' ? 'Espace' : (e.code || e.key) };
+        localStorage.setItem('tw-touche', JSON.stringify(touche));
+        st('✅ Touche assignée : ' + touche.label);
+        majTouchesUI();
+        return;
+    }
+    if (!touche || estChamp(e.target) || e.repeat || !toucheCorrespond(e)) return;
+    e.preventDefault();
+    if (appelEnAttente()) { accepterAppel(); return; }          // la même touche répond à l'appel
+    if (opts.toggle) micActif ? couperMicro() : activerMicro(); else activerMicro();
+}, true);
+
+document.addEventListener('keyup', e => {
+    if (!touche || opts.toggle || estChamp(e.target) || !toucheCorrespond(e)) return;
+    e.preventDefault(); couperMicro();
+}, true);
+
+function changerDebit() {
+    const paliers = [16000, 24000, 40000];
+    opts.debit = paliers[(paliers.indexOf(opts.debit) + 1) % paliers.length];
+    localStorage.setItem('tw-opts', JSON.stringify(opts));
+    majTouchesUI();
+    st('📶 Qualité audio appliquée aux prochains appels (' + opts.debit / 1000 + ' kbit/s)');
+}
+function assignerTouche() { captureTouche = true; st('⌨️ Appuie sur la touche à utiliser (Échap = annuler)'); majTouchesUI(); }
+function retirerTouche() { touche = null; localStorage.removeItem('tw-touche'); st('Touche retirée'); majTouchesUI(); }
+function basculerOpt(k) {
+    opts[k] = !opts[k];
+    localStorage.setItem('tw-opts', JSON.stringify(opts));
+    if (k === 'voix') { opts.voix ? parler('Annonces vocales activées') : window.speechSynthesis && speechSynthesis.cancel(); }
+    if (k === 'sons') bip([[660, 80], [880, 80]]);
+    if (k === 'vib') vib(80);
+    majTouchesUI();
+}
+function majTouchesUI() {
+    $('btn-sons').textContent = opts.sons ? '🔔 Sons : activés' : '🔕 Sons : désactivés';
+    $('btn-vib').textContent = opts.vib ? '📳 Vibrations : activées' : '📴 Vibrations : désactivées';
+    $('btn-voix').textContent = opts.voix ? '🗣️ Annonces vocales : activées' : '🤐 Annonces vocales : désactivées';
+    $('btn-toggle').textContent = opts.toggle ? '🔁 Touche : appuyer pour parler, rappuyer pour couper' : '✋ Touche : maintenir pour parler';
+    $('btn-touche').textContent = captureTouche ? '⌨️ Appuie sur une touche… (Échap = annuler)'
+        : '⌨️ Touche d\'émission : ' + (touche ? touche.label : 'aucune') + ' (changer)';
+    $('btn-touche-off').style.display = touche ? 'block' : 'none';
+    const nomDebit = { 16000:'Économique', 24000:'Standard', 40000:'Haute' }[opts.debit] || 'Perso';
+    $('btn-debit').textContent = '📶 Qualité audio (Opus) : ' + nomDebit + ' · ' + opts.debit / 1000 + ' kbit/s';
+}
+
+// ----- Boutons du casque / écran de verrouillage (Media Session) -----
+// Un son quasi inaudible tourne en boucle : le navigateur affiche alors les commandes média,
+// et les boutons Lecture/Pause du casque ou de l'écran verrouillé pilotent le micro (mode bascule).
+const GARDE_URL = (() => {
+    const n = 8000, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+    const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true);
+    v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    w(36, 'data'); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, i % 2 ? 1 : -1, true);
+    return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+})();
+const gardeAudio = new Audio(GARDE_URL);
+gardeAudio.loop = true;
+
+function demarrerGardeAudio() {
+    gardeAudio.play().catch(() => {
+        const relance = () => gardeAudio.play().catch(() => {});
+        document.addEventListener('pointerdown', relance, { once: true });
+        document.addEventListener('keydown', relance, { once: true });
+    });
+}
+
+function setupMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    const ms = navigator.mediaSession;
+    ms.metadata = new MediaMetadata({ title: '🎙️ Talkie-walkie', artist: 'Lecture/Pause = parler · Suivant = répondre' });
+    const bascule = () => {
+        if (appelEnAttente()) { accepterAppel(); return; }
+        micActif ? couperMicro() : activerMicro();
+    };
+    ['play', 'pause', 'nexttrack', 'previoustrack'].forEach(a => { try { ms.setActionHandler(a, bascule); } catch (e) {} });
+    try { ms.setActionHandler('stop', () => { appelEnAttente() ? refuserAppel() : couperMicro(); }); } catch (e) {}
+    ms.playbackState = 'playing';
+    demarrerGardeAudio();
+    console.log('✅ MediaSession activée (commandes casque / verrouillage)');
+}
 
 // ===== ARRIÈRE-PLAN : SILENT AUDIO TRICK =====
 // Joue un son silencieux en boucle pour empêcher Android
@@ -1444,22 +2183,6 @@ async function activerWakeLock() {
         }
     } catch(e) {
         console.log('Wake Lock non supporté:', e);
-    }
-}
-
-// ===== ARRIÈRE-PLAN : MEDIA SESSION =====
-// Enregistre l'app comme session média → Android ne la suspend pas
-function setupMediaSession() {
-    if ('mediaSession' in navigator) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: '🎙️ Talkie-walkie',
-            artist: 'Communication en cours...',
-        });
-        // Actions vides pour garder la session active
-        navigator.mediaSession.setActionHandler('play', () => {});
-        navigator.mediaSession.setActionHandler('pause', () => {});
-        navigator.mediaSession.playbackState = 'playing';
-        console.log('✅ MediaSession activée');
     }
 }
 
@@ -1512,259 +2235,210 @@ setInterval(() => {
 // Ignorer les pings reçus
 const origGererMsg = gererMsg;
 
-// ===== MODE DIRECT : WebRTC Wi-Fi sans serveur =====
-// Pas de serveur ni de STUN : la signalisation passe par QR code (ou texte collé)
-// et l'audio circule en local, sur le même Wi-Fi ou via un point d'accès.
-let directPc = null, directRole = '', directMonCode = '', modeDirect = false, scanStream = null;
+// ===== LANGUE (installation / réglages) : français par défaut, anglais =====
+let LANGUE = localStorage.getItem('tw-langue');   // 'fr' | 'en' | null (pas encore choisie)
+const EN = {
+ 'Hors connexion':'Offline','Connexion':'Connection','Nom':'Name','Code canal':'Channel code',
+ 'Générer un code à 4 chiffres':'Generate a 4-digit code','Mode :':'Mode:','Pseudo du contact':'Contact username',
+ 'Parler':'Talk','En ligne':'Live','📢 Diffuser à tous':'📢 Broadcast to all','En attente...':'Waiting...',
+ '🔊 Touche ici pour activer le son':'🔊 Tap here to turn sound on','📞 Appeler':'📞 Call','⚙️ Paramètres':'⚙️ Settings',
+ 'Compte':'Account','Canal':'Channel','Réseau':'Network','Contacts en ligne':'Contacts online','Réduction de bruit':'Noise reduction',
+ '♿ Touches & retour sensoriel':'♿ Keys & sensory feedback','✖ Retirer la touche':'✖ Remove key',
+ 'Casque ou télécommande Bluetooth : Lecture/Pause = parler ou couper, Suivant = répondre à un appel.':'Bluetooth headset or remote: Play/Pause = talk or stop, Next = answer a call.',
+ '📱 Partager par QR code':'📱 Share by QR code','🗑️ Réinitialiser les contacts':'🗑️ Reset contacts',
+ '🔌 Se déconnecter du canal':'🔌 Leave channel','✏️ Changer mon pseudo':'✏️ Change my username','👤 Changer de compte':'👤 Switch account',
+ '🗑️ Supprimer données locales':'🗑️ Delete local data','Fermer':'Close','👤 Connexion':'👤 Sign in',
+ 'Connecte-toi avec Google pour choisir ton pseudo, ou continue sans compte.':'Sign in with Google to pick your username, or continue without an account.',
+ 'Se connecter avec Google':'Sign in with Google','ou continuer sans compte':'or continue without an account','Ton pseudo':'Your username',
+ 'Continuer sans compte':'Continue without an account',
+ 'En mode invité, ton pseudo et tes contacts sont enregistrés uniquement sur cet appareil.':'In guest mode, your username and contacts are saved on this device only.',
+ '✏️ Choisis ton pseudo':'✏️ Choose your username','Valider le pseudo':'Confirm username','← Retour':'← Back',
+ '📶 Connexion directe':'📶 Direct connection',
+ "Sans serveur ni Internet. Relie d'abord les deux téléphones (Wi-Fi Direct, partage de connexion ou même Wi-Fi), puis échangez 2 codes.":'No server or Internet needed. First link the two phones (Wi-Fi Direct, hotspot or same Wi-Fi), then exchange 2 codes.',
+ '➕ Créer la connexion':'➕ Create connection','🔗 Rejoindre':'🔗 Join','📋 Copier le code':'📋 Copy code','Colle le code ici':'Paste the code here',
+ '📷 Scanner':'📷 Scan','✅ Valider':'✅ Confirm',
+ 'Ton ami scanne le QR code ou ouvre le lien : le canal est pré-rempli.':'Your friend scans the QR code or opens the link: the channel is pre-filled.',
+ 'Code du canal':'Channel code','📋 Copier le lien':'📋 Copy link','📤 Partager':'📤 Share','📞 Appel entrant de':'📞 Incoming call from',
+ "📲 Installer l'app":'📲 Install the app',
+ 'Hors ligne':'Offline','Connecté':'Connected','Reconnexion…':'Reconnecting…','Non connecté':'Not connected',
+ "❌ Pas d'Internet":'❌ No Internet','🟢 Connecté au serveur':'🟢 Connected to server','🟠 Reconnexion en cours':'🟠 Reconnecting','⚪ Non connecté':'⚪ Not connected',
+ '⚪ Désactivée':'⚪ Off','✅ Active':'✅ On','⚠️ Indisponible':'⚠️ Unavailable','⏳ Au premier appel':'⏳ At first call',
+ '🔇 Désactiver la réduction de bruit':'🔇 Turn noise reduction off','🎙️ Activer la réduction de bruit':'🎙️ Turn noise reduction on',
+ '🔇 Fermer canal':'🔇 Close channel','🔔 Sons : activés':'🔔 Sounds: on','🔕 Sons : désactivés':'🔕 Sounds: off',
+ '📳 Vibrations : activées':'📳 Vibration: on','📴 Vibrations : désactivées':'📴 Vibration: off',
+ '🗣️ Annonces vocales : activées':'🗣️ Voice announcements: on','🤐 Annonces vocales : désactivées':'🤐 Voice announcements: off',
+ '🔁 Touche : appuyer pour parler, rappuyer pour couper':'🔁 Key: press to talk, press again to stop','✋ Touche : maintenir pour parler':'✋ Key: hold to talk',
+ '⌨️ Appuie sur une touche… (Échap = annuler)':'⌨️ Press a key… (Esc = cancel)',
+ '🎨 Thème : Automatique':'🎨 Theme: Auto','🎨 Thème : Gris clair':'🎨 Theme: Light gray','🎨 Thème : Gris foncé':'🎨 Theme: Dark gray',
+ '📷 Scanner un QR code':'📷 Scan a QR code','⏹ Arrêter le scan':'⏹ Stop scanning',
+ '❌ Scanner indisponible sur cet appareil':'❌ Scanner not available on this device','❌ Caméra refusée : autorise-la pour scanner':'❌ Camera denied: allow it to scan',
+ '❌ QR code non reconnu':'❌ QR code not recognized',
+ 'Changer de pseudo te déconnecte du canal. Continuer ?':'Changing your username disconnects you from the channel. Continue?',
+ 'Pour supprimer ton compte Google, déconnecte-toi puis gère ton compte sur myaccount.google.com.':'To delete your Google account, sign out and manage it at myaccount.google.com.',
+ '📋 Lien copié':'📋 Link copied','Supprimer tous les contacts ?':'Delete all contacts?','🗑️ Contacts réinitialisés':'🗑️ Contacts reset',
+ '🔌 Déconnecté':'🔌 Disconnected','🔊 Son activé':'🔊 Sound on','✅ Micro : déjà capturé':'✅ Mic: already captured',
+ '❌ getUserMedia non supporté par ce navigateur':'❌ getUserMedia not supported by this browser','❌ Pas de stream reçu':'❌ No stream received',
+ '🔇 Chargement de RNNoise...':'🔇 Loading RNNoise...','⚠️ RNNoise indisponible, micro brut utilisé':'⚠️ RNNoise unavailable, using raw mic',
+ '❌ Aucune piste audio':'❌ No audio track','Entre pseudo et canal !':'Enter username and channel!','Connexion PeerJS Cloud...':'Connecting to PeerJS Cloud...',
+ 'Pseudo déjà pris sur ce canal !':'Username already taken on this channel!','❌ Contact indisponible':'❌ Contact unavailable',
+ '🟠 Serveur perdu, reconnexion...':'🟠 Server lost, reconnecting...','📵 Appel annulé':'📵 Call cancelled','Déjà ajouté !':'Already added!',
+ 'Aucun contact !':'No contacts!','❌ Pas de stream local':'❌ No local stream','Appel refusé':'Call declined','❌ Pas de micro capturé':'❌ No mic captured',
+ '🔴 Micro ACTIVÉ':'🔴 Mic ON','⚫ Micro coupé':'⚫ Mic off','Canal fermé':'Channel closed','Entre ton nom !':'Enter your name!',
+ 'Assignation annulée':'Assignment cancelled','⌨️ Appuie sur la touche à utiliser (Échap = annuler)':'⌨️ Press the key to use (Esc = cancel)',
+ 'Touche retirée':'Key removed','✅ App active':'✅ App active'
+};
+const EN_RE = [
+ [/^✅ (.+) en ligne$/, '✅ $1 is online'], [/^✅ Connecté : (.+)$/, '✅ Connected: $1'],
+ [/^📞 Appel de (.+)$/, '📞 Call from $1'], [/^📞 Appel vers (.+)\.\.\.$/, '📞 Calling $1...'],
+ [/^✅ En appel avec (.+)$/, '✅ In call with $1'], [/^❌ (.+) a refusé$/, '❌ $1 declined'],
+ [/^📵 (.+) a raccroché$/, '📵 $1 hung up'], [/^👤 Compte : (.+)$/, '👤 Account: $1'],
+ [/^✅ Touche assignée : (.+)$/, '✅ Key assigned: $1'], [/^✅ Canal (.+) reçu$/, '✅ Channel $1 received'],
+ [/^✅ Tu es déjà sur le canal (.+)$/, '✅ You are already on channel $1'],
+ [/^Connexion au serveur local (.+)\.\.\.$/, 'Connecting to local server $1...'],
+ [/^📢 Canal ouvert \((\d+) contact\(s\)\) — Maintiens Parler$/, '📢 Channel open ($1 contact(s)) — Hold Talk'],
+ [/^Quitter le canal « (.+) » pour rejoindre « (.+) » \?$/, 'Leave channel “$1” to join “$2”?'],
+ [/^📶 Qualité audio appliquée aux prochains appels \((.+)\)$/, '📶 Audio quality applied to next calls ($1)'],
+ [/^📶 Qualité audio \(Opus\) : (.+) · (\d+) kbit\/s$/, (m, n, d) => '📶 Audio quality (Opus): ' + ({ 'Économique':'Economy', 'Haute':'High', 'Perso':'Custom' }[n] || n) + ' · ' + d + ' kbit/s'],
+ [/^⌨️ Touche d'émission : (.+) \(changer\)$/, (m, t) => '⌨️ Talk key: ' + (t === 'aucune' ? 'none' : t) + ' (change)'],
+ [/^(⚡|🔁) Audio (en connexion directe|via relais TURN)(.*)$/, (m, i, t, r) => i + ' Audio ' + (t[0] === 'e' ? 'direct connection' : 'via TURN relay') + r]
+];
 
-function basculerDirect() {
-    modeReseau = 'direct';
-    document.querySelectorAll('.tgl-btn').forEach((b, i) => b.classList.toggle('active', i === 2));
-    $('in-ip').style.display = 'none';
+function tr(txt) {
+    if (LANGUE !== 'en' || typeof txt !== 'string') return txt;
+    const k = txt.trim();
+    if (!k) return txt;
+    let r = EN[k];
+    if (r === undefined) for (const [re, f] of EN_RE) if (re.test(k)) { r = k.replace(re, f); break; }
+    return r === undefined ? txt : txt.replace(k, () => r);
 }
-
-function ouvrirDirect() {
-    $('dir-start').style.display = 'flex';
-    $('dir-step').style.display = 'none';
-    $('modal-direct').classList.add('show');
+const ATTRS = ['placeholder', 'title', 'aria-label'];
+function traduireAttrs(el) {
+    if (!el.getAttribute) return;
+    ATTRS.forEach(a => { if (el.hasAttribute(a)) { const v = el.getAttribute(a), r = tr(v); if (r !== v) el.setAttribute(a, r); } });
 }
-
-function directPcNew() {
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    localStream.getAudioTracks().forEach(t => { t.enabled = false; pc.addTrack(t, localStream); }); // muet jusqu'à « Parler »
-    pc.ontrack = e => { brancherAudio(e.streams[0]); $('audio').play().catch(() => {}); };
-    pc.onconnectionstatechange = () => {
-        if (directPc !== pc) return;
-        const s = pc.connectionState;
-        if (s === 'connected') directConnecte();
-        else if (s === 'disconnected') st('🟠 Liaison instable…');
-        else if (s === 'failed') {
-            const avant = modeDirect;
-            deconnecter(); fermerModal('modal-direct');
-            st(avant ? '📵 Liaison directe perdue' : '❌ Liaison impossible : les deux téléphones sont-ils sur le même Wi-Fi ?');
-        }
-    };
-    directPc = pc;
-    return pc;
+function traduireNoeud(n) { const v = n.nodeValue, r = tr(v); if (r !== v) n.nodeValue = r; }
+function traduireDom(root) {
+    if (root.nodeType === 3) { traduireNoeud(root); return; }
+    if (root.nodeType !== 1 || /^(SCRIPT|STYLE)$/.test(root.tagName)) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => /^(SCRIPT|STYLE)$/.test(n.parentNode.tagName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    let n; while ((n = w.nextNode())) traduireNoeud(n);
+    traduireAttrs(root);
+    root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(traduireAttrs);
 }
-
-const directIceFini = pc => new Promise(ok => {
-    if (pc.iceGatheringState === 'complete') return ok();
-    pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') ok(); });
-    setTimeout(ok, 3000);
-});
-
-function directAfficher(sdp, msg) {
-    directMonCode = sdp;
-    $('dir-start').style.display = 'none';
-    $('dir-step').style.display = 'block';
-    $('dir-msg').textContent = msg;
-    $('dir-txt').value = '';
-    const box = $('dir-qr'); box.innerHTML = '';
-    try {
-        if (typeof qrcode === 'undefined') throw new Error('qr');
-        const qr = qrcode(0, 'L'); qr.addData(sdp); qr.make();
-        const n = qr.getModuleCount(), m = 4, z = 3, cv = document.createElement('canvas');
-        cv.width = cv.height = (n + 2 * m) * z;
-        const g = cv.getContext('2d');
-        g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = '#000';
-        for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) g.fillRect((c + m) * z, (r + m) * z, z, z);
-        cv.style.cssText = 'width:100%;image-rendering:pixelated;border-radius:6px;';
-        box.appendChild(cv);
-    } catch (e) { box.innerHTML = '<p>QR indisponible : utilise « Copier mon code ».</p>'; }
+let obsTrad = null;
+const OBS_OPTS = { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS };
+function activerTraduction() {
+    document.documentElement.lang = 'en';
+    traduireDom(document.body);
+    if (obsTrad) return;
+    obsTrad = new MutationObserver(ms => {
+        obsTrad.disconnect();   // nos propres modifications ne rebouclent pas
+        ms.forEach(m => {
+            if (m.type === 'characterData') traduireNoeud(m.target);
+            else if (m.type === 'attributes') traduireAttrs(m.target);
+            else m.addedNodes.forEach(traduireDom);
+        });
+        obsTrad.observe(document.body, OBS_OPTS);
+    });
+    obsTrad.observe(document.body, OBS_OPTS);
 }
+// alert / confirm / prompt traduits aussi
+const _al = window.alert.bind(window), _co = window.confirm.bind(window), _pr = window.prompt.bind(window);
+window.alert = m => _al(tr(m)); window.confirm = m => _co(tr(m)); window.prompt = (m, d) => _pr(tr(m), d);
 
-async function directCreer() {
-    try {
-        directRole = 'hote';
-        const pc = directPcNew();
-        await pc.setLocalDescription(await pc.createOffer());
-        await directIceFini(pc);
-        directAfficher(pc.localDescription.sdp, "Fais scanner ce code par l'autre téléphone, puis scanne le sien.");
-    } catch (e) { st('❌ ' + e.message); }
+function demarrerLangue() {   // appelée au lancement : écran de choix à la première ouverture
+    if (LANGUE) { demarrerAuth(); return; }
+    const pref = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'lg-en' : 'lg-fr';
+    $(pref).style.outline = '3px solid var(--orange)';
+    $('langue-init').classList.add('show');
 }
-
-function directRejoindre() {
-    directRole = 'invite';
-    $('dir-start').style.display = 'none';
-    $('dir-step').style.display = 'block';
-    $('dir-qr').innerHTML = '';
-    $('dir-msg').textContent = "Scanne le code de l'autre téléphone.";
-    directScanner();
+function choisirLangue(l, installation) {
+    localStorage.setItem('tw-langue', l);
+    LANGUE = l;
+    $('langue-init').classList.remove('show');
+    if (l === 'en') activerTraduction();
+    else if (obsTrad) { location.reload(); return; }   // retour au français : on recharge la page
+    if (installation) demarrerAuth(); else majApparenceUI();
 }
-
-async function directRecevoir(txt) {
-    txt = (txt || '').trim().replace(/\r?\n/g, '\r\n') + '\r\n';
-    if (!txt.startsWith('v=0')) { st('❌ Code invalide'); return; }
-    stopScan();
-    try {
-        if (directRole === 'hote') {
-            await directPc.setRemoteDescription({ type: 'answer', sdp: txt });
-            $('dir-msg').textContent = 'Connexion en cours…';
-        } else {
-            const pc = directPcNew();
-            await pc.setRemoteDescription({ type: 'offer', sdp: txt });
-            await pc.setLocalDescription(await pc.createAnswer());
-            await directIceFini(pc);
-            directAfficher(pc.localDescription.sdp, "Fais scanner ce code par l'autre téléphone.");
-        }
-    } catch (e) { st('❌ ' + e.message); }
+function changerLangue() {
+    const cible = LANGUE === 'en' ? 'fr' : 'en';
+    if (cible === 'fr' && peer && !confirm('Changer de langue recharge l\'application et te déconnecte. Continuer ?')) return;
+    choisirLangue(cible, false);
 }
+if (LANGUE === 'en') activerTraduction();
 
-async function directScanner() {
-    if (!('BarcodeDetector' in window)) { st('📷 Scan non supporté ici : colle le code en texte'); return; }
-    try {
-        stopScan();
-        const det = new BarcodeDetector({ formats: ['qr_code'] });
-        scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        const v = $('dir-video');
-        v.srcObject = scanStream; v.style.display = 'block'; await v.play();
-        $('dir-qr').innerHTML = '';
-        const boucle = async () => {
-            if (!scanStream) return;
-            try { const r = await det.detect(v); if (r.length) { directRecevoir(r[0].rawValue); return; } } catch (e) {}
-            setTimeout(boucle, 250);
-        };
-        boucle();
-    } catch (e) { st('❌ Caméra : ' + e.name); }
+// ===== THÈME : automatique / clair / sombre =====
+let themePref = localStorage.getItem('tw-theme') || 'clair';
+const mqSombre = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+function appliquerTheme() {
+    const sombre = themePref === 'sombre' || (themePref === 'auto' && mqSombre && mqSombre.matches);
+    document.documentElement.dataset.theme = sombre ? 'dark' : 'light';
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.content = sombre ? '#222527' : '#D8DDDE';
 }
-
-function stopScan() {
-    if (scanStream) scanStream.getTracks().forEach(t => t.stop());
-    scanStream = null;
-    const v = $('dir-video'); if (v) v.style.display = 'none';
+if (mqSombre && mqSombre.addEventListener) mqSombre.addEventListener('change', appliquerTheme);
+function changerTheme() {
+    themePref = { auto:'clair', clair:'sombre', sombre:'auto' }[themePref];
+    localStorage.setItem('tw-theme', themePref);
+    appliquerTheme(); majApparenceUI();
 }
-
-function directCopier() {
-    if (navigator.clipboard) navigator.clipboard.writeText(directMonCode).then(() => st('📋 Code copié'), () => st('❌ Copie impossible'));
+function majApparenceUI() {
+    $('btn-theme').textContent = '🎨 Thème : ' + { auto:'Automatique', clair:'Gris clair', sombre:'Gris foncé' }[themePref];
+    $('btn-langue').textContent = '🌐 ' + (LANGUE === 'en' ? 'Language: English' : 'Langue : Français');
 }
+appliquerTheme();
 
-function directConnecte() {
-    if (modeDirect) { st('✅ Liaison rétablie'); return; }
-    stopScan(); fermerModal('modal-direct');
-    modeDirect = true; etatServeur = 'ok';
-    mediaConn['direct'] = { close: () => fermerDirect(), peerConnection: directPc };
-    $('card-contacts').style.display = 'none';
-    $('bcast-btn').style.display = 'none';
-    $('ptt-zone').style.display = 'flex';
-    $('btn-set').style.visibility = 'visible';
-    majReseau();
-    st('✅ Liaison directe active — maintiens Parler');
-}
-
-function fermerDirect() {
-    stopScan();
-    const pc = directPc; directPc = null; directRole = ''; directMonCode = '';
-    delete mediaConn['direct'];
-    if (modeDirect) { modeDirect = false; etatServeur = 'off'; }
-    $('bcast-btn').style.display = '';
-    if (pc) try { pc.close(); } catch (e) {}
-}
-
-function directAnnuler() {
-    if (!modeDirect) fermerDirect();
-    fermerModal('modal-direct');
-}
-
-// ===== RÉÉCOUTE : 20 DERNIÈRES SECONDES REÇUES =====
-// Tout l'audio reçu passe par un tampon circulaire (voix seulement, silences ignorés).
-// Un tap sur « Réécouter » rejoue le tampon ; un second tap l'arrête.
-const REP_SEC = 20;
-let repCtx = null, repMix = null, repNode = null, repBuf = null, repPret = null, repLect = null;
-let repEcr = 0, repRempli = 0, repReste = 0, repLabel = -1, repSources = {};
-
-function repInit() {
-    if (repPret) return repPret;
-    repPret = (async () => {
-        repCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const code = `registerProcessor('rep-cap', class extends AudioWorkletProcessor {
-            constructor() { super(); this.b = new Float32Array(2048); this.i = 0; }
-            process(inp) {
-                const c = inp[0] && inp[0][0];
-                if (c) for (let k = 0; k < c.length; k++) {
-                    this.b[this.i++] = c[k];
-                    if (this.i === 2048) { this.port.postMessage(this.b.slice()); this.i = 0; }
-                }
-                return true;
+// ===== SCANNER D'INVITATION (QR du canal) =====
+let scanFlux = null;
+async function scannerInvitation() {
+    arreterScanInvit();
+    const det = window.BarcodeDetector ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+    if (!det && !window.jsQR) { st('❌ Scanner indisponible sur cet appareil'); return; }
+    try { scanFlux = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); }
+    catch (e) { st('❌ Caméra refusée : autorise-la pour scanner'); return; }
+    const v = $('scan-video');
+    v.srcObject = scanFlux; v.style.display = 'block'; v.play().catch(() => {});
+    $('btn-scan').textContent = '⏹ Arrêter le scan'; $('btn-scan').onclick = arreterScanInvit;
+    const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+    const boucle = async () => {
+        if (!scanFlux) return;
+        let txt = '';
+        try {
+            if (det) { const r = await det.detect(v); if (r.length) txt = r[0].rawValue; }
+            else if (v.videoWidth) {
+                cv.width = v.videoWidth; cv.height = v.videoHeight; cx.drawImage(v, 0, 0);
+                const im = cx.getImageData(0, 0, cv.width, cv.height);
+                const r = jsQR(im.data, im.width, im.height); if (r) txt = r.data;
             }
-        });`;
-        const url = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
-        await repCtx.audioWorklet.addModule(url);
-        URL.revokeObjectURL(url);
-        repBuf = new Float32Array(Math.round(repCtx.sampleRate * REP_SEC));
-        repMix = repCtx.createGain();
-        repNode = new AudioWorkletNode(repCtx, 'rep-cap');
-        repNode.port.onmessage = e => repAjouter(e.data);
-        const muet = repCtx.createGain(); muet.gain.value = 0; // le nœud doit être relié à la sortie pour tourner
-        repMix.connect(repNode); repNode.connect(muet); muet.connect(repCtx.destination);
-        repCtx.onstatechange = () => { if (repCtx && repCtx.state === 'suspended') repCtx.resume().catch(() => {}); };
-    })().catch(e => { console.warn('Réécoute indisponible :', e); repCtx = null; });
-    return repPret;
-}
-
-document.addEventListener('pointerdown', () => {
-    if (repCtx && repCtx.state === 'suspended') repCtx.resume().catch(() => {});
-}, { passive: true });
-
-async function brancherAudio(flux) {
-    $('audio').srcObject = flux;
-    await repInit();
-    if (!repCtx || !flux.getAudioTracks().length) return;
-    try {
-        if (repSources[flux.id]) repSources[flux.id].disconnect();
-        repSources[flux.id] = repCtx.createMediaStreamSource(flux);
-        repSources[flux.id].connect(repMix);
-    } catch (e) { console.warn('Réécoute :', e); }
-}
-
-function repAjouter(blk) {
-    let e = 0;
-    for (let k = 0; k < blk.length; k++) e += blk[k] * blk[k];
-    if (Math.sqrt(e / blk.length) > 0.004) repReste = 8;      // voix détectée
-    else if (repReste <= 0) return;                            // silence : on n'enregistre pas
-    else repReste--;                                           // courte traîne après la voix
-    const n = repBuf.length;
-    for (let k = 0; k < blk.length; k++) { repBuf[repEcr] = blk[k]; repEcr = (repEcr + 1) % n; }
-    repRempli = Math.min(n, repRempli + blk.length);
-    repMajLabel();
-}
-
-function repMajLabel() {
-    if (repLect) return;
-    const sec = repCtx ? Math.floor(repRempli / repCtx.sampleRate) : 0;
-    if (sec === repLabel) return;
-    repLabel = sec;
-    $('replay-btn').textContent = sec ? '⏪ Réécouter (' + sec + ' s)' : '⏪ Réécouter';
-}
-
-async function reecouter() {
-    if (repLect) { try { repLect.stop(); } catch (e) {} return; }
-    if (!repCtx || !repRempli) { st("⏪ Rien à réécouter pour l'instant"); return; }
-    if (repCtx.state === 'suspended') await repCtx.resume();
-    const n = repBuf.length, tot = repRempli, pcm = new Float32Array(tot);
-    const debut = (repEcr - tot + n) % n;
-    for (let k = 0; k < tot; k++) pcm[k] = repBuf[(debut + k) % n];
-    const ab = repCtx.createBuffer(1, tot, repCtx.sampleRate);
-    ab.copyToChannel(pcm, 0);
-    const src = repCtx.createBufferSource();
-    src.buffer = ab; src.connect(repCtx.destination);
-    const vol = $('audio').volume; $('audio').volume = 0.15;   // baisse le direct pendant la relecture
-    repLect = src;
-    $('replay-btn').classList.add('lecture');
-    $('replay-btn').textContent = '⏹ Stop (' + Math.round(tot / repCtx.sampleRate) + ' s)';
-    src.onended = () => {
-        repLect = null; $('audio').volume = vol;
-        $('replay-btn').classList.remove('lecture');
-        repLabel = -1; repMajLabel();
+        } catch (e) {}
+        if (txt) { arreterScanInvit(); traiterInvitation(txt); return; }
+        setTimeout(boucle, 250);
     };
-    src.start();
+    boucle();
 }
+function arreterScanInvit() {
+    if (scanFlux) { scanFlux.getTracks().forEach(t => t.stop()); scanFlux = null; }
+    const v = $('scan-video'); if (v) { v.style.display = 'none'; v.srcObject = null; }
+    const b = $('btn-scan'); if (b) { b.textContent = '📷 Scanner un QR code'; b.onclick = scannerInvitation; }
+}
+function fermerQr() { arreterScanInvit(); fermerModal('modal-qr'); }
 
-function repVider() {
-    Object.values(repSources).forEach(nd => { try { nd.disconnect(); } catch (e) {} });
-    repSources = {}; repEcr = 0; repRempli = 0; repReste = 0;
-    if (repLect) try { repLect.stop(); } catch (e) {}
-    repLabel = -1; repMajLabel();
+function traiterInvitation(txt) {
+    let canal = '', ip = '';
+    try { const u = new URL(txt.trim()); canal = u.searchParams.get('canal') || ''; ip = u.searchParams.get('ip') || ''; }
+    catch (e) { if (/^\S{1,20}$/.test(txt.trim())) canal = txt.trim(); }
+    if (!canal) { st('❌ QR code non reconnu'); return; }
+    if (peer && canal === monCanal) { st('✅ Tu es déjà sur le canal ' + canal); return; }
+    if (peer && !confirm('Quitter le canal « ' + monCanal + ' » pour rejoindre « ' + canal + ' » ?')) return;
+    $('in-canal').value = canal;
+    modeReseau = ip ? 'lan' : 'internet';
+    document.querySelectorAll('.mode-row .tgl-btn').forEach((b, i) => b.classList.toggle('active', i === (ip ? 1 : 0)));
+    $('in-ip').style.display = ip ? 'block' : 'none';
+    if (ip) $('in-ip').value = ip;
+    fermerQr();
+    if (peer) deconnecter();
+    st('✅ Canal ' + canal + ' reçu');
+    connecter();
 }
 
 // ===== SPLASHSCREEN =====
@@ -1772,7 +2446,7 @@ setTimeout(() => {
     $('splash').style.display = 'none';
     $('main').style.display = 'flex';
     initFirebase();
-    demarrerAuth();
+    demarrerLangue();
     // Activer les fonctionnalités d'arrière-plan dès le démarrage
     activerSilenceAudio();
     activerWakeLock();
