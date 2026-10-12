@@ -557,8 +557,19 @@
         <div class="set-row"><span>Canal</span><span id="set-canal"></span></div>
         <div class="set-row"><span>Mode</span><span id="set-mode"></span></div>
         <div class="set-row"><span>Réseau</span><span id="set-net"></span></div>
+        <div class="set-row"><span>Relais Internet (TURN)</span><span id="set-turn"></span></div>
         <div class="set-row"><span>Contacts en ligne</span><span id="set-online"></span></div>
         <div class="set-row"><span>Réduction de bruit</span><span id="set-bruit"></span></div>
+        <div class="set-row" style="margin-top:10px;"><span>🔍 Diagnostic des contacts</span><span></span></div>
+        <div id="diag"></div>
+        <details style="margin-top:10px;"><summary style="font-size:11px;color:#888;cursor:pointer;">🛠 Avancé : serveur TURN personnalisé</summary>
+<div class="set-row" style="margin-top:10px;"><span>Serveur TURN (Metered)</span><span></span></div>
+        <textarea id="turn-json" rows="4" placeholder='[{"urls":"turn:global.relay.metered.ca:443","username":"...","credential":"..."}]' autocapitalize="off" spellcheck="false" style="width:100%; margin-top:6px; font-family:monospace; font-size:11px; padding:8px; border:1.5px solid #B4BDC1; border-radius:10px; background:#fff; color:var(--encre);"></textarea>
+        <input id="turn-app" type="text" placeholder="Nom de l'app Metered" autocapitalize="off" style="width:100%; margin-top:6px;">
+        <input id="turn-key" type="text" placeholder="Clé API Metered" autocapitalize="off" style="width:100%; margin-top:6px;">
+        <div class="set-btns" style="margin-top:6px;"><button class="btn" onclick="enregistrerTurn()">💾 Enregistrer le TURN</button></div>
+        <p style="font-size:11px; color:#888; text-align:left; margin:6px 0 0;">Compte gratuit sur metered.ca : colle ici le tableau iceServers du tableau de bord (ou saisis le nom de l'app et la clé). Mêmes valeurs sur chaque téléphone.</p>
+</details>
         <div class="set-btns" style="margin-top:10px;">
             <button class="btn" id="btn-theme" onclick="changerTheme()"></button>
             <button class="btn" id="btn-langue" onclick="changerLangue()"></button>
@@ -726,11 +737,11 @@ let etatServeur = 'off'; // off | ok | reco
 let directActif = false;   // true quand une liaison directe (sans serveur) est établie
 
 // ===== UTILITAIRES =====
-const sanitize = s => s.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+const sanitize = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
 const peerId = (canal, pseudo) => `${sanitize(canal)}-${sanitize(pseudo)}`;
-const nomDePeer = peer => {
-    const parts = peer.split('-');
-    return parts[parts.length - 1];
+const nomDePeer = id => {
+    const pre = sanitize(monCanal || '') + '-';
+    return id.startsWith(pre) ? id.slice(pre.length) : id.split('-').pop();
 };
 const st = msg => { $('status').textContent = msg; console.log(msg); try { retourStatut(msg); } catch (e) {} };
 const vibrer = () => navigator.vibrate && navigator.vibrate(200);
@@ -996,7 +1007,7 @@ function majReseau() {
     net.className = e.cls;
     let txt = e.txt;
     if (etatServeur === 'ok' && navigator.onLine && contacts.length)
-        txt += ' · ' + [...enLigne].filter(n => contacts.includes(n)).length + '/' + contacts.length;
+        txt += ' · ' + contacts.filter(c => enLigne.has(sanitize(c))).length + '/' + contacts.length;
     $('net-txt').textContent = txt;
 }
 
@@ -1035,10 +1046,14 @@ function ouvrirParametres() {
     $('set-mode').textContent = modeReseau === 'lan' ? '📡 Local' : modeReseau === 'direct' ? '📶 Direct' : '🌐 Internet';
     const c = navigator.connection;
     $('set-net').textContent = etatReseau().long + (c && c.effectiveType ? ' · ' + c.effectiveType.toUpperCase() : '');
-    $('set-online').textContent = [...enLigne].filter(n => contacts.includes(n)).length + ' / ' + contacts.length;
+    $('set-online').textContent = contacts.filter(c => enLigne.has(sanitize(c))).length + ' / ' + contacts.length;
     majBruitUI();
     majTouchesUI();
     majApparenceUI();
+    majDiagnostic(); majTurnUI();
+    $('turn-json').value = localStorage.getItem('tw-ice-json') || '';
+    $('turn-app').value = localStorage.getItem('tw-turn-app') || '';
+    $('turn-key').value = localStorage.getItem('tw-turn-key') || '';
     $('modal-set').classList.add('show');
 }
 
@@ -1083,6 +1098,7 @@ function resetContacts() {
 }
 
 function deconnecter() {
+    clearInterval(surveillance); surveillance = null;
     Object.values(dataConn).forEach(c => { try { c.send({ type: 'raccroche', de: monPseudo }); c.close(); } catch (e) {} });
     Object.values(mediaConn).forEach(c => { try { c.close(); } catch (e) {} });
     dataConn = {}; mediaConn = {}; enLigne.clear();
@@ -1122,7 +1138,10 @@ function deconnecter() {
 // puis renseigne ici le nom de ton app et ta clé API. Les identifiants TURN sont alors récupérés
 // automatiquement à chaque connexion.
 const METERED_APP = '';   // ex : 'monapp'  (-> monapp.metered.live)
-const METERED_KEY = '';   // ta clé API Metered
+const METERED_KEY = '';   // ta clé API Metered (ancien tableau de bord)
+// Nouveau tableau de bord Metered : identifiant + mot de passe d'un « credential » (prioritaire)
+const METERED_USER = '4cff1e0179e23d25cdbed8be';
+const METERED_PASS = 'l2na062yey4GCeus';
 //
 // Sinon, ou en secours : relais public partagé (identifiants publics, sans garantie de disponibilité).
 const ICE_DEFAUT = [
@@ -1131,25 +1150,66 @@ const ICE_DEFAUT = [
     { urls: 'stun:stun.cloudflare.com:3478' },
     { urls: 'turn:openrelay.metered.ca:80',                 username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:openrelay.metered.ca:443',                username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' }
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
 ];
-let ICE_CONFIG = { iceServers: ICE_DEFAUT };
+let ICE_CONFIG = { iceServers: ICE_DEFAUT, iceCandidatePoolSize: 2 };
 
 async function construireIce() {
-    if (!METERED_APP || !METERED_KEY) return { iceServers: ICE_DEFAUT };
+    try {   // serveurs collés depuis le tableau de bord (prioritaires)
+        const liste = JSON.parse(localStorage.getItem('tw-ice-json') || 'null');
+        if (Array.isArray(liste) && liste.length) return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, ...liste], iceCandidatePoolSize: 2 };
+    } catch (e) {}
+    if (METERED_USER && METERED_PASS && METERED_PASS !== 'COLLE_ICI_LE_MOT_DE_PASSE') {
+        const h = 'global.relay.metered.ca';
+        return { iceServers: [
+            { urls: 'stun:stun.relay.metered.ca:80' },
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'turn:' + h + ':80',                  username: METERED_USER, credential: METERED_PASS },
+            { urls: 'turn:' + h + ':80?transport=tcp',    username: METERED_USER, credential: METERED_PASS },
+            { urls: 'turn:' + h + ':443',                 username: METERED_USER, credential: METERED_PASS },
+            { urls: 'turns:' + h + ':443?transport=tcp',  username: METERED_USER, credential: METERED_PASS }
+        ], iceCandidatePoolSize: 2 };
+    }
+    const app = localStorage.getItem('tw-turn-app') || METERED_APP, cle = localStorage.getItem('tw-turn-key') || METERED_KEY;
+    if (!app || !cle) return { iceServers: ICE_DEFAUT, iceCandidatePoolSize: 2 };
     try {
         const ctl = new AbortController();
         const t = setTimeout(() => ctl.abort(), 4000);
-        const r = await fetch('https://' + METERED_APP + '.metered.live/api/v1/turn/credentials?apiKey=' + encodeURIComponent(METERED_KEY), { signal: ctl.signal });
+        const r = await fetch('https://' + app + '.metered.live/api/v1/turn/credentials?apiKey=' + encodeURIComponent(cle), { signal: ctl.signal });
         clearTimeout(t);
         const liste = await r.json();
         if (!Array.isArray(liste) || !liste.length) throw new Error('réponse vide');
         console.log('✅ TURN Metered chargé (' + liste.length + ' serveurs)');
-        return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, ...liste] };
+        return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, ...liste], iceCandidatePoolSize: 2 };
     } catch (e) {
         console.warn('TURN Metered indisponible, relais public utilisé :', e);
-        return { iceServers: ICE_DEFAUT };
+        return { iceServers: ICE_DEFAUT, iceCandidatePoolSize: 2 };
     }
+}
+
+
+// ===== TEST DU RELAIS TURN =====
+// Le mode Internet entre deux réseaux différents (4G / Wi-Fi) exige un relais TURN valide.
+// On force la politique « relay » : si aucun candidat relais n'apparaît, le TURN est mort/refusé.
+let etatTurn = 'inconnu';   // 'ok' | 'ko' | 'test' | 'inconnu'
+function testerTurn(cfg) {
+    return new Promise(res => {
+        etatTurn = 'test'; majTurnUI();
+        let fini = false, pc;
+        const fin = ok => { if (fini) return; fini = true; try { pc.close(); } catch (e) {} etatTurn = ok ? 'ok' : 'ko'; majTurnUI(); res(ok); };
+        try {
+            pc = new RTCPeerConnection({ iceServers: cfg.iceServers.filter(x => /^turns?:/.test([].concat(x.urls)[0])), iceTransportPolicy: 'relay' });
+            pc.onicecandidate = e => { if (e.candidate && /typ relay/.test(e.candidate.candidate)) fin(true); else if (!e.candidate) fin(false); };
+            pc.createDataChannel('t');
+            pc.createOffer().then(o => pc.setLocalDescription(o)).catch(() => fin(false));
+            setTimeout(() => fin(false), 6000);
+        } catch (e) { fin(false); }
+    });
+}
+function majTurnUI() {
+    const el = $('set-turn'); if (!el) return;
+    el.textContent = { ok:'🟢 Relais actif', ko:'🔴 Relais HS', test:'🟠 Test…', inconnu:'⚪ Non testé' }[etatTurn];
 }
 
 // ===== CODEC OPUS =====
@@ -1360,7 +1420,8 @@ async function getMic() {
         rawStream = stream;
         if (rnnoiseOn) {
             st('🔇 Chargement de RNNoise...');
-            const traite = await creerPipelineRnnoise(stream);
+            const traite = await Promise.race([creerPipelineRnnoise(stream), new Promise(r => setTimeout(() => r(null), 7000))]);
+            if (!traite) { bruitEtat = 'err'; if (nrCtx) { try { nrCtx.close(); } catch (e) {} nrCtx = null; } nrNodes = []; }
             if (traite) localStream = traite;
             else st('⚠️ RNNoise indisponible, micro brut utilisé');
         }
@@ -1427,6 +1488,9 @@ async function connecter() {
     }
 
     ICE_CONFIG = await construireIce();
+    if (modeReseau === 'internet') testerTurn(ICE_CONFIG).then(ok => {
+        if (!ok) st('⚠️ Aucun relais TURN valide : Internet ne marchera qu\'entre appareils du même réseau');
+    });
     let cfg;
     if (modeReseau === 'lan') {
         const ip = $('in-ip').value.trim();
@@ -1450,12 +1514,17 @@ async function connecter() {
         $('btn-set').style.visibility = 'visible';
         afficherContacts();
         contacts.forEach(n => getDataConn(n));
+        surveillerLiaisons();
     });
 
     peer.on('error', err => {
         console.error('Peer error:', err);
         if (err.type === 'unavailable-id') alert('Pseudo déjà pris sur ce canal !');
-        else if (err.type === 'peer-unavailable') st('❌ Contact indisponible');
+        else if (err.type === 'peer-unavailable') {
+            const m = (err.message || '').match(/peer\s+(\S+)/i);
+            if (m) etatContact[nomDePeer(m[1])] = 'absent';
+            if (Date.now() < indispoJusqua) st('❌ Contact indisponible');
+        }
         else st('❌ Erreur: ' + err.type);
     });
 
@@ -1482,34 +1551,101 @@ async function connecter() {
     peer.on('connection', conn => configConn(conn));
 }
 
+let surveillance = null, indispoJusqua = 0;
+const etatContact = {};   // nom normalisé -> 'recherche' | 'absent' | 'reseau'
+
 function configConn(conn) {
+    conn._cree = Date.now();
     conn.on('open', () => {
         const n = nomDePeer(conn.peer);
+        conn._vu = Date.now();
         dataConn[n] = conn;
         enLigne.add(n);
         afficherContacts();
         st('✅ ' + n + ' en ligne');
     });
-    conn.on('data', d => gererMsg(conn, d));
+    conn.on('data', d => { conn._vu = Date.now(); gererMsg(conn, d); });
     conn.on('close', () => {
         const n = nomDePeer(conn.peer);
-        delete dataConn[n];
-        enLigne.delete(n);
-        afficherContacts();
+        // une ancienne liaison qui se ferme ne doit pas effacer la nouvelle
+        if (dataConn[n] === conn) { delete dataConn[n]; enLigne.delete(n); afficherContacts(); }
     });
     conn.on('error', console.error);
+    if (conn.peerConnection) conn.peerConnection.addEventListener('iceconnectionstatechange', () => {
+        if (conn.peerConnection.iceConnectionState !== 'failed') return;
+        etatContact[nomDePeer(conn.peer)] = 'reseau';
+        if (Date.now() < indispoJusqua) st('❌ Liaison échouée avec ' + nomDePeer(conn.peer) + ' (réseaux incompatibles ?)');
+    });
 }
 
 function getDataConn(nom) {
-    if (dataConn[nom] && dataConn[nom].open) return dataConn[nom];
-    const c = peer.connect(peerId(monCanal, nom));
+    nom = sanitize(nom);
+    const ancien = dataConn[nom];
+    if (ancien && ancien.open) return ancien;
+    if (ancien && Date.now() - (ancien._cree || 0) < 15000) return ancien;   // tentative en cours
+    if (ancien) { try { ancien.close(); } catch (e) {} }
+    const c = peer.connect(peerId(monCanal, nom), { reliable: true });
     dataConn[nom] = c;
+    etatContact[nom] = 'recherche';
     configConn(c);
     return c;
 }
 
+// Teste qu'une liaison « ouverte » répond vraiment (elle peut être morte sans événement)
+function majDiagnostic() {
+    const txt = { ok:'🟢 Connecté', recherche:'🟠 Recherche…', absent:'⚪ Absent du canal', reseau:'🔴 Réseaux incompatibles (TURN requis)' };
+    let h = '<div class="set-row"><span>Mon identifiant</span><span>' + peerId(monCanal, monPseudo) + '</span></div>';
+    h += contacts.map(c => {
+        const k = sanitize(c), e = enLigne.has(k) ? 'ok' : etatContact[k];
+        return '<div class="set-row"><span>' + c + '</span><span>' + (txt[e] || '⚪ Pas encore essayé') + '</span></div>';
+    }).join('');
+    $('diag').innerHTML = h;
+}
+
+function enregistrerTurn() {
+    const brut = $('turn-json').value.trim();
+    if (brut) {
+        try { if (!Array.isArray(JSON.parse(brut))) throw new Error(); }
+        catch (e) { st('❌ JSON invalide'); return; }
+    }
+    localStorage.setItem('tw-ice-json', brut);
+    localStorage.setItem('tw-turn-app', $('turn-app').value.trim());
+    localStorage.setItem('tw-turn-key', $('turn-key').value.trim());
+    st('✅ TURN enregistré : déconnecte-toi puis reconnecte-toi');
+}
+
+function liaisonVivante(conn) {
+    return new Promise(res => {
+        const debut = Date.now();
+        try { conn.send({ type: 'ping' }); } catch (e) { return res(false); }
+        const iv = setInterval(() => {
+            if ((conn._vu || 0) > debut) { clearInterval(iv); res(true); }
+            else if (Date.now() - debut > 2500) { clearInterval(iv); res(false); }
+        }, 100);
+    });
+}
+
+// Toutes les 8 s : ping des liaisons, retrait des mortes, nouvelle tentative vers les absents
+function surveillerLiaisons() {
+    if (surveillance) return;
+    surveillance = setInterval(() => {
+        if (!peer) return;
+        Object.entries(dataConn).forEach(([n, c]) => {
+            if (!c.open) return;
+            if (Date.now() - (c._vu || 0) > 20000) {
+                try { c.close(); } catch (e) {}
+                if (dataConn[n] === c) { delete dataConn[n]; enLigne.delete(n); afficherContacts(); }
+                return;
+            }
+            try { c.send({ type: 'ping' }); } catch (e) {}
+        });
+        if (!peer.disconnected) contacts.forEach(n => { if (!enLigne.has(sanitize(n))) getDataConn(n); });
+    }, 8000);
+}
+
 function gererMsg(conn, d) {
-    if (d.type === 'ping') return; // Ignorer les pings keepalive
+    if (d.type === 'ping') { try { conn.send({ type: 'pong' }); } catch (e) {} return; }
+    if (d.type === 'pong') return;
     if (d.type === 'demande-appel') {
         connEntrante = conn;
         appelant = d.de;
@@ -1563,11 +1699,12 @@ function ajouterContact() {
 }
 
 function supprimerContact(nom) {
+    const k = sanitize(nom);
     contacts = contacts.filter(c=>c!==nom);
     sauverContacts();
-    if (dataConn[nom]) { dataConn[nom].close(); delete dataConn[nom]; }
-    if (mediaConn[nom]) { mediaConn[nom].close(); delete mediaConn[nom]; }
-    enLigne.delete(nom);
+    if (dataConn[k]) { dataConn[k].close(); delete dataConn[k]; }
+    if (mediaConn[k]) { mediaConn[k].close(); delete mediaConn[k]; }
+    enLigne.delete(k);
     afficherContacts();
 }
 
@@ -1580,7 +1717,7 @@ function afficherContacts() {
     }
     el.innerHTML = contacts.map(c => `
         <div class="chip">
-            <span class="dot ${enLigne.has(c)?'on':''}"></span>
+            <span class="dot ${enLigne.has(sanitize(c))?'on':''}"></span>
             <span>${c}</span>
             <button class="chip-x" onclick="supprimerContact('${c}')">×</button>
         </div>
@@ -1608,9 +1745,19 @@ async function appelerContact(nom) {
     }
     st('📞 Appel vers ' + nom + '...');
     vibrer();
-    const conn = getDataConn(nom);
+    indispoJusqua = Date.now() + 12000;
+    const k = sanitize(nom);
+    let conn = dataConn[k];
+    if (conn && conn.open && !(await liaisonVivante(conn))) {   // liaison affichée « ouverte » mais morte
+        try { conn.close(); } catch (e) {}
+        delete dataConn[k]; enLigne.delete(k); afficherContacts();
+        conn = null;
+    }
+    if (!conn || !conn.open) conn = getDataConn(nom);
     const send = () => conn.send({ type:'demande-appel', de:monPseudo });
-    conn.open ? send() : conn.on('open', send);
+    if (conn.open) { send(); return; }
+    const t = setTimeout(() => st('❌ Impossible de joindre ' + nom + ' (réseau ou hors ligne)'), 12000);
+    conn.on('open', () => { clearTimeout(t); send(); });
 }
 
 function demarrerAudio(nom) {
@@ -1620,14 +1767,14 @@ function demarrerAudio(nom) {
     }
     console.log('Démarrage appel audio avec:', nom);
     const call = peer.call(peerId(monCanal, nom), localStream, { sdpTransform: sdpOpus });
-    mediaConn[nom] = call;
+    mediaConn[sanitize(nom)] = call;
     call.on('stream', s => {
         console.log('Stream reçu de:', nom);
         jouerFlux(s, call);
     });
     call.on('close', () => {
         console.log('Appel fermé');
-        delete mediaConn[nom];
+        delete mediaConn[sanitize(nom)];
     });
     call.on('error', e => {
         console.error('Erreur appel:', e);
@@ -1742,9 +1889,9 @@ $('bcast-btn').addEventListener('click', async () => {
 
     contacts.forEach(nom => {
         const call = peer.call(peerId(monCanal, nom), localStream, { sdpTransform: sdpOpus });
-        mediaConn[nom] = call;
+        mediaConn[sanitize(nom)] = call;
         call.on('stream', s => { jouerFlux(s, call); });
-        call.on('close', () => delete mediaConn[nom]);
+        call.on('close', () => delete mediaConn[sanitize(nom)]);
         call.on('error', console.error);
     });
 
@@ -1895,11 +2042,11 @@ async function directValider() {
 function directConnecte() {
     if (directActif) return;
     directActif = true;
-    const n = dNom;
+    const n = sanitize(dNom);
     mediaConn[n] = { close() {} };
     dataConn[n] = { open: true, close() {}, send(m) { if (m.type === 'raccroche' && dDc && dDc.readyState === 'open') dDc.send('bye'); } };
     enLigne.add(n);
-    if (!contacts.includes(n)) { contacts.push(n); sauverContacts(); }
+    if (!contacts.some(c => sanitize(c) === n)) { contacts.push(dNom); sauverContacts(); }
     etatServeur = 'ok';
     $('card-contacts').style.display = 'block';
     $('ptt-zone').style.display = 'flex';
@@ -2285,10 +2432,14 @@ const EN = {
  'Aucun contact !':'No contacts!','❌ Pas de stream local':'❌ No local stream','Appel refusé':'Call declined','❌ Pas de micro capturé':'❌ No mic captured',
  '🔴 Micro ACTIVÉ':'🔴 Mic ON','⚫ Micro coupé':'⚫ Mic off','Canal fermé':'Channel closed','Entre ton nom !':'Enter your name!',
  'Assignation annulée':'Assignment cancelled','⌨️ Appuie sur la touche à utiliser (Échap = annuler)':'⌨️ Press the key to use (Esc = cancel)',
- 'Touche retirée':'Key removed','✅ App active':'✅ App active'
+ 'Touche retirée':'Key removed','Mon identifiant':'My ID','🔍 Diagnostic des contacts':'🔍 Contact diagnostics','Serveur TURN (Metered)':'TURN server (Metered)',
+ '🟢 Connecté':'🟢 Connected','🟠 Recherche…':'🟠 Searching…','⚪ Absent du canal':'⚪ Not on the channel','🔴 Réseaux incompatibles (TURN requis)':'🔴 Incompatible networks (TURN needed)','⚪ Pas encore essayé':'⚪ Not tried yet',
+ "Nom de l'app Metered":'Metered app name','Clé API Metered':'Metered API key','💾 Enregistrer le TURN':'💾 Save TURN',"Compte gratuit sur metered.ca : colle ici le tableau iceServers du tableau de bord (ou saisis le nom de l'app et la clé). Mêmes valeurs sur chaque téléphone.":'Free account at metered.ca: paste the iceServers array from the dashboard (or enter app name and key). Same values on each phone.','❌ JSON invalide':'❌ Invalid JSON','Serveurs ICE (JSON)':'ICE servers (JSON)','✅ TURN enregistré : déconnecte-toi puis reconnecte-toi':'✅ TURN saved: disconnect then reconnect','✅ App active':'✅ App active'
 };
 const EN_RE = [
- [/^✅ (.+) en ligne$/, '✅ $1 is online'], [/^✅ Connecté : (.+)$/, '✅ Connected: $1'],
+ [/^✅ (.+) en ligne$/, '✅ $1 is online'],
+ [/^❌ Impossible de joindre (.+) \(réseau ou hors ligne\)$/, '❌ Cannot reach $1 (network issue or offline)'],
+ [/^❌ Liaison échouée avec (.+) \(réseaux incompatibles \?\)$/, '❌ Link failed with $1 (incompatible networks?)'], [/^✅ Connecté : (.+)$/, '✅ Connected: $1'],
  [/^📞 Appel de (.+)$/, '📞 Call from $1'], [/^📞 Appel vers (.+)\.\.\.$/, '📞 Calling $1...'],
  [/^✅ En appel avec (.+)$/, '✅ In call with $1'], [/^❌ (.+) a refusé$/, '❌ $1 declined'],
  [/^📵 (.+) a raccroché$/, '📵 $1 hung up'], [/^👤 Compte : (.+)$/, '👤 Account: $1'],
