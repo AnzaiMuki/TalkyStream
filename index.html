@@ -563,13 +563,20 @@
         <div class="set-row" style="margin-top:10px;"><span>🔍 Diagnostic des contacts</span><span></span></div>
         <div id="diag"></div>
         <details style="margin-top:10px;"><summary style="font-size:11px;color:#888;cursor:pointer;">🛠 Avancé : serveur TURN personnalisé</summary>
-<div class="set-row" style="margin-top:10px;"><span>Serveur TURN (Metered)</span><span></span></div>
+<div class="set-row" style="margin-top:10px;"><span>Serveur TURN (ExpressTURN)</span><span></span></div>
+        <input id="express-user" type="text" placeholder="ExpressTURN : turn_username" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%; margin-top:6px;">
+        <input id="express-pass" type="text" placeholder="ExpressTURN : turn_password" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%; margin-top:6px;">
+        <p style="font-size:11px; color:#888; text-align:left; margin:6px 0 0;">Compte gratuit sur expressturn.com : copie ton nom d'utilisateur et ton mot de passe TURN du tableau de bord. Mêmes valeurs sur chaque téléphone.</p>
+        <div class="set-row" style="margin-top:10px;"><span>Serveur TURN (Metered)</span><span></span></div>
         <textarea id="turn-json" rows="4" placeholder='[{"urls":"turn:global.relay.metered.ca:443","username":"...","credential":"..."}]' autocapitalize="off" spellcheck="false" style="width:100%; margin-top:6px; font-family:monospace; font-size:11px; padding:8px; border:1.5px solid #B4BDC1; border-radius:10px; background:#fff; color:var(--encre);"></textarea>
         <input id="turn-app" type="text" placeholder="Nom de l'app Metered" autocapitalize="off" style="width:100%; margin-top:6px;">
         <input id="turn-key" type="text" placeholder="Clé API Metered" autocapitalize="off" style="width:100%; margin-top:6px;">
         <div class="set-btns" style="margin-top:6px;"><button class="btn" onclick="enregistrerTurn()">💾 Enregistrer le TURN</button></div>
         <p style="font-size:11px; color:#888; text-align:left; margin:6px 0 0;">Compte gratuit sur metered.ca : colle ici le tableau iceServers du tableau de bord (ou saisis le nom de l'app et la clé). Mêmes valeurs sur chaque téléphone.</p>
 </details>
+        <div class="set-row" style="margin-top:10px;"><span>💛 Soutenir le projet</span><span></span></div>
+        <p style="font-size:11px; color:#888; text-align:left; margin:6px 0 0;">Le mode Internet entre réseaux différents passe par un relais payant. Si l'app te rend service, une petite contribution aide à acheter des Go de relais pour que le service reste disponible pour tous. Merci !</p>
+        <div id="soutien-num"></div>
         <div class="set-btns" style="margin-top:10px;">
             <button class="btn" id="btn-theme" onclick="changerTheme()"></button>
             <button class="btn" id="btn-langue" onclick="changerLangue()"></button>
@@ -665,7 +672,7 @@
         </div>
         <div id="dir-code" style="display:none;">
             <p id="dir-code-titre"></p>
-            <div id="dir-qr" style="background:#fff; padding:8px; border-radius:8px; display:inline-block;"></div>
+            <div id="dir-qr" style="background:#fff; padding:16px; border-radius:8px; display:inline-block;"></div>
             <textarea id="dir-out" class="dir-ta" rows="3" readonly onclick="this.select()"></textarea>
             <button class="btn" style="width:100%;" onclick="directCopier()">📋 Copier le code</button>
         </div>
@@ -1050,7 +1057,9 @@ function ouvrirParametres() {
     majBruitUI();
     majTouchesUI();
     majApparenceUI();
-    majDiagnostic(); majTurnUI();
+    majDiagnostic(); majTurnUI(); majSoutien();
+    $('express-user').value = localStorage.getItem('tw-express-user') || '';
+    $('express-pass').value = localStorage.getItem('tw-express-pass') || '';
     $('turn-json').value = localStorage.getItem('tw-ice-json') || '';
     $('turn-app').value = localStorage.getItem('tw-turn-app') || '';
     $('turn-key').value = localStorage.getItem('tw-turn-key') || '';
@@ -1140,6 +1149,9 @@ function deconnecter() {
 const METERED_APP = '';   // ex : 'monapp'  (-> monapp.metered.live)
 const METERED_KEY = '';   // ta clé API Metered (ancien tableau de bord)
 // Nouveau tableau de bord Metered : identifiant + mot de passe d'un « credential » (prioritaire)
+// ExpressTURN (gratuit, 1 To/mois annoncé) : expressturn.com/signup, puis copie turn_username et turn_password
+const EXPRESS_USER = '000000002107264516';
+const EXPRESS_PASS = 'sTvgC8UjV7oDx9GAawDFr5Kl1kw=';
 const METERED_USER = '4cff1e0179e23d25cdbed8be';
 const METERED_PASS = 'l2na062yey4GCeus';
 //
@@ -1160,17 +1172,22 @@ async function construireIce() {
         const liste = JSON.parse(localStorage.getItem('tw-ice-json') || 'null');
         if (Array.isArray(liste) && liste.length) return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, ...liste], iceCandidatePoolSize: 2 };
     } catch (e) {}
+    // Fournisseurs à identifiants fixes : tous ceux qui sont renseignés sont combinés,
+    // le navigateur utilise le premier relais qui répond.
+    const srv = [];
     if (METERED_USER && METERED_PASS && METERED_PASS !== 'COLLE_ICI_LE_MOT_DE_PASSE') {
         const h = 'global.relay.metered.ca';
-        return { iceServers: [
-            { urls: 'stun:stun.relay.metered.ca:80' },
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'turn:' + h + ':80',                  username: METERED_USER, credential: METERED_PASS },
-            { urls: 'turn:' + h + ':80?transport=tcp',    username: METERED_USER, credential: METERED_PASS },
-            { urls: 'turn:' + h + ':443',                 username: METERED_USER, credential: METERED_PASS },
-            { urls: 'turns:' + h + ':443?transport=tcp',  username: METERED_USER, credential: METERED_PASS }
-        ], iceCandidatePoolSize: 2 };
+        srv.push({ urls: 'stun:stun.relay.metered.ca:80' });
+        ['turn:' + h + ':80', 'turn:' + h + ':80?transport=tcp', 'turn:' + h + ':443', 'turns:' + h + ':443?transport=tcp']
+            .forEach(u => srv.push({ urls: u, username: METERED_USER, credential: METERED_PASS }));
     }
+    const exU = localStorage.getItem('tw-express-user') || EXPRESS_USER, exP = localStorage.getItem('tw-express-pass') || EXPRESS_PASS;
+    if (exU && exP) {
+        srv.push({ urls: 'stun:free.expressturn.com:3478' });
+        srv.push({ urls: ['turn:free.expressturn.com:3478?transport=udp', 'turn:free.expressturn.com:3478?transport=tcp'],
+                   username: exU, credential: exP });
+    }
+    if (srv.length) return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, ...srv], iceCandidatePoolSize: 2 };
     const app = localStorage.getItem('tw-turn-app') || METERED_APP, cle = localStorage.getItem('tw-turn-key') || METERED_KEY;
     if (!app || !cle) return { iceServers: ICE_DEFAUT, iceCandidatePoolSize: 2 };
     try {
@@ -1210,6 +1227,23 @@ function testerTurn(cfg) {
 function majTurnUI() {
     const el = $('set-turn'); if (!el) return;
     el.textContent = { ok:'🟢 Relais actif', ko:'🔴 Relais HS', test:'🟠 Test…', inconnu:'⚪ Non testé' }[etatTurn];
+}
+
+
+// ===== SOUTIEN AU PROJET (contribution volontaire Mobile Money) =====
+const SOUTIEN_MTN  = '';   // ex : '+229 01 XX XX XX XX'
+const SOUTIEN_MOOV = '';   // ex : '+229 01 XX XX XX XX'
+function majSoutien() {
+    const el = $('soutien-num'); if (!el) return;
+    const l = [['MTN MoMo', SOUTIEN_MTN], ['Moov Money', SOUTIEN_MOOV]].filter(x => x[1]);
+    if (!l.length) { el.innerHTML = '<p style="font-size:11px;color:#888;margin:6px 0 0;">Bientôt disponible.</p>'; return; }
+    el.innerHTML = l.map(x => '<div class="set-row"><span>' + x[0] + '</span><span>' + x[1] +
+        ' <button class="btn" style="padding:3px 8px;margin-left:4px;" onclick="copierNumero(\'' + x[1] + '\')">📋</button></span></div>').join('');
+}
+function copierNumero(n) {
+    const ok = () => st('✅ Numéro copié');
+    if (navigator.clipboard) navigator.clipboard.writeText(n).then(ok, () => st('❌ Copie impossible'));
+    else st('❌ Copie impossible');
 }
 
 // ===== CODEC OPUS =====
@@ -1608,6 +1642,8 @@ function enregistrerTurn() {
         try { if (!Array.isArray(JSON.parse(brut))) throw new Error(); }
         catch (e) { st('❌ JSON invalide'); return; }
     }
+    localStorage.setItem('tw-express-user', $('express-user').value.trim());
+    localStorage.setItem('tw-express-pass', $('express-pass').value.trim());
     localStorage.setItem('tw-ice-json', brut);
     localStorage.setItem('tw-turn-app', $('turn-app').value.trim());
     localStorage.setItem('tw-turn-key', $('turn-key').value.trim());
@@ -1972,12 +2008,48 @@ async function dAfficherCode(titre, obj) {
     $('dir-out').value = code;
     try {
         const qr = qrcode(0, 'L'); qr.addData(code); qr.make();
-        $('dir-qr').innerHTML = qr.createImgTag(3, 0);
+        const cell = Math.max(3, Math.min(6, Math.floor(250 / qr.getModuleCount())));
+        $('dir-qr').innerHTML = qr.createImgTag(cell, 0);
+        const im = $('dir-qr').querySelector('img'); if (im) im.style.cssText = 'display:block;max-width:100%;height:auto;image-rendering:pixelated;';
     } catch (e) {
         $('dir-qr').innerHTML = '<span style="color:#1a1a2e;font-size:11px;">QR indisponible : copie le code</span>';
     }
     $('dir-code').style.display = 'block';
 }
+
+// ===== Compaction du SDP pour le mode Direct (QR plus petit) =====
+// On n'envoie que l'essentiel (ufrag, pwd, empreinte, rôle DTLS, candidats IPv4 UDP) et on reconstruit un SDP minimal.
+function dCompacter(sdp) {
+  try {
+    const g = re => { const m = sdp.match(re); return m ? m[1] : ''; };
+    const hex = g(/a=fingerprint:sha-256 ([0-9A-Fa-f:]+)/).replace(/:/g, '');
+    const fp = btoa(String.fromCharCode(...hex.match(/../g).map(h => parseInt(h, 16)))).replace(/=+$/, '');
+    const c = [];
+    const av = sdp.split('m=application')[0];   // candidats de la section audio (BUNDLE : une seule suffit)
+    for (const m of av.matchAll(/a=candidate:\S+ 1 udp \d+ (\d+\.\d+\.\d+\.\d+) (\d+) typ host/g)) {
+        const e = m[1] + ':' + m[2];
+        if (!c.includes(e)) c.push(e);
+    }
+    if (!c.length || !hex) return null;
+    return { u: g(/a=ice-ufrag:(\S+)/), p: g(/a=ice-pwd:(\S+)/), f: fp, s: { actpass: 'o', active: 'a', passive: 'p' }[g(/a=setup:(\S+)/)] || 'o', c };
+  } catch (e) { return null; }
+}
+function dReconstruire(o, type) {
+    const hex = [...atob(o.f)].map(ch => ch.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()).join(':');
+    const setup = { o: 'actpass', a: 'active', p: 'passive' }[o.s] || (type === 'offer' ? 'actpass' : 'active');
+    const [ip, port] = (o.c[0] || '0.0.0.0:9').split(':');
+    const cand = o.c.map((e, i) => { const [h, p] = e.split(':'); return 'a=candidate:' + (i + 1) + ' 1 udp ' + (2122260223 - i) + ' ' + h + ' ' + p + ' typ host generation 0'; });
+    const ice = ['a=ice-ufrag:' + o.u, 'a=ice-pwd:' + o.p, 'a=fingerprint:sha-256 ' + hex, 'a=setup:' + setup];
+    return [
+        'v=0', 'o=- ' + Date.now() + ' 2 IN IP4 127.0.0.1', 's=-', 't=0 0', 'a=group:BUNDLE 0 1',
+        'm=audio ' + port + ' UDP/TLS/RTP/SAVPF 111', 'c=IN IP4 ' + ip, 'a=rtcp:9 IN IP4 0.0.0.0', ...cand, ...ice,
+        'a=mid:0', 'a=sendrecv', 'a=rtcp-mux', 'a=rtpmap:111 opus/48000/2', 'a=fmtp:111 minptime=10;useinbandfec=1',
+        'm=application ' + port + ' UDP/DTLS/SCTP webrtc-datachannel', 'c=IN IP4 ' + ip, ...cand, ...ice,
+        'a=mid:1', 'a=sctp-port:5000', 'a=max-message-size:262144', ''
+    ].join('\r\n');
+}
+const dSdpOuCompact = sdp => dCompacter(sdp) || sdp;   // repli : SDP complet si la compaction est impossible
+const dSdpRecu = (d, type) => typeof d === 'string' ? d : dReconstruire(d, type);
 
 // Téléphone A : crée l'invitation, puis attend la réponse de B
 async function directCreer() {
@@ -1990,7 +2062,7 @@ async function directCreer() {
     try {
         await dPc.setLocalDescription(await dPc.createOffer());
         await dAttendreICE(dPc);
-        await dAfficherCode("1/2 · Montre ce code à l'autre téléphone", { n: monPseudo, t: 'o', d: dPc.localDescription.sdp });
+        await dAfficherCode("1/2 · Montre ce code à l'autre téléphone", { n: monPseudo, t: 'o', d: dSdpOuCompact(dPc.localDescription.sdp) });
     } catch (e) { dMsg('❌ ' + e.message); return; }
     $('dir-saisie-titre').textContent = '2/2 · Scanne ou colle son code de réponse';
     $('dir-in').value = '';
@@ -2021,16 +2093,16 @@ async function directValider() {
         dNom = nettoyerPseudo(m.n || '') || 'ami';
         if (dRole === 'hote' && m.t === 'a') {
             dMsg('⏳ Connexion...');
-            await dPc.setRemoteDescription({ type: 'answer', sdp: m.d });
+            await dPc.setRemoteDescription({ type: 'answer', sdp: dSdpRecu(m.d, 'answer') });
         } else if (dRole === 'invite' && m.t === 'o') {
             dPc = dNouveauPC();
             dPc.ondatachannel = e => { dDc = e.channel; dConfigDC(dDc); };
             dMsg('⏳ Création de la réponse...');
-            await dPc.setRemoteDescription({ type: 'offer', sdp: m.d });
+            await dPc.setRemoteDescription({ type: 'offer', sdp: dSdpRecu(m.d, 'offer') });
             await dPc.setLocalDescription(await dPc.createAnswer());
             await dAttendreICE(dPc);
             $('dir-saisie').style.display = 'none';
-            await dAfficherCode("2/2 · Montre ce code à l'autre téléphone", { n: monPseudo, t: 'a', d: dPc.localDescription.sdp });
+            await dAfficherCode("2/2 · Montre ce code à l'autre téléphone", { n: monPseudo, t: 'a', d: dSdpOuCompact(dPc.localDescription.sdp) });
             dMsg("⏳ En attente de l'autre téléphone...");
         } else {
             dMsg(dRole === 'hote' ? "❌ Il faut le code de réponse de l'autre téléphone." : "❌ Il faut le code de celui qui a créé la connexion.");
@@ -2385,6 +2457,11 @@ const origGererMsg = gererMsg;
 // ===== LANGUE (installation / réglages) : français par défaut, anglais =====
 let LANGUE = localStorage.getItem('tw-langue');   // 'fr' | 'en' | null (pas encore choisie)
 const EN = {
+ '💛 Soutenir le projet':'💛 Support the project',
+ "Le mode Internet entre réseaux différents passe par un relais payant. Si l'app te rend service, une petite contribution aide à acheter des Go de relais pour que le service reste disponible pour tous. Merci !":'Internet mode across different networks uses a paid relay. If the app helps you, a small contribution helps buy relay data so the service stays available for everyone. Thank you!',
+ 'Bientôt disponible.':'Coming soon.', '✅ Numéro copié':'✅ Number copied', '❌ Copie impossible':'❌ Copy failed',
+ 'Relais Internet (TURN)':'Internet relay (TURN)', '🛠 Avancé : serveur TURN personnalisé':'🛠 Advanced: custom TURN server',
+
  'Hors connexion':'Offline','Connexion':'Connection','Nom':'Name','Code canal':'Channel code',
  'Générer un code à 4 chiffres':'Generate a 4-digit code','Mode :':'Mode:','Pseudo du contact':'Contact username',
  'Parler':'Talk','En ligne':'Live','📢 Diffuser à tous':'📢 Broadcast to all','En attente...':'Waiting...',
