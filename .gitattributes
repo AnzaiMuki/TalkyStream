@@ -1,0 +1,26 @@
+# Fins de ligne normalisées ; LF imposé là où les octets comptent
+* text=auto
+
+# Scripts Unix
+android/gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Scripts JS
+*.js text eol=lf
+*.mjs text eol=lf
+
+# Binaires
+*.png binary
+*.jpg binary
+*.webp binary
+*.ico binary
+*.woff2 binary
+*.wasm binary
+*.jar binary
+*.apk binary
+*.aab binary
+
+# Bibliothèques embarquées : octets conservés tels quels (LF d'origine),
+# SHA-256 vérifiés dans web/vendor/MANIFEST.json. En dernier : prime sur *.js
+web/vendor/** -text
