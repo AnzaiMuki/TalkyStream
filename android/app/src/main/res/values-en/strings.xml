@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="canal_session">Talkie-walkie session</string>
+    <string name="canal_alertes">Calls and messages</string>
+    <string name="notif_connecte">Connected to channel %1$s</string>
+    <string name="notif_micro_ouvert">🔴 Mic on</string>
+    <string name="notif_micro_coupe">Mic off · ready to receive</string>
+    <string name="action_couper">Mute mic</string>
+    <string name="action_quitter">Leave channel</string>
+    <string name="annuler">Cancel</string>
+    <string name="partager">Share</string>
+    <string name="permission_micro_refusee">Microphone denied: Talkie-walkie cannot transmit.</string>
+    <string name="permission_camera_refusee">Camera denied: paste the code instead.</string>
+    <string name="erreur_rendu">The display restarted after an error.</string>
+</resources>

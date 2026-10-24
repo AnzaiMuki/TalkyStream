@@ -1,0 +1,157 @@
+{
+  "date": "2026-10-24T01:40:33.550Z",
+  "appareil": {
+    "modele": "Infinix X680",
+    "android": "10",
+    "sdk": "29",
+    "taille": "Physical size: 720x1640",
+    "densite": "Physical density: 320",
+    "webview": "com.google.android.webview, 155.0.8059.43"
+  },
+  "canal": "E2EOBP67C",
+  "erreursJs": [],
+  "resultats": [
+    {
+      "etape": "installation-et-premier-lancement",
+      "statut": "RÉUSSI",
+      "duree_ms": 86026,
+      "mesures": {
+        "demarrage_froid_ms": null
+      },
+      "note": "TotalTime non relevé sur cette exécution ; 2164 ms et 2195 ms mesurés sur deux autres exécutions."
+    },
+    {
+      "etape": "choix-langue-et-mode-invite",
+      "statut": "RÉUSSI",
+      "duree_ms": 3804
+    },
+    {
+      "etape": "permission-micro-dialogue-systeme",
+      "statut": "RÉUSSI",
+      "duree_ms": 5815,
+      "mesures": {
+        "connexion_canal_ms": 5757
+      }
+    },
+    {
+      "etape": "micro-muet-apres-connexion-et-service-premier-plan",
+      "statut": "RÉUSSI",
+      "duree_ms": 2465
+    },
+    {
+      "etape": "pc-rejoint-le-canal-presence",
+      "statut": "BLOQUÉ",
+      "duree_ms": 35751,
+      "erreur": "condition non atteinte en 30000 ms : () => enLigne.has('ordi')",
+      "statut_brut": "ÉCHOUÉ",
+      "cause_blocage": "Réseau de test : le PC sort par le partage USB du téléphone ; les deux pairs ont la même IP publique derrière le CGNAT de l'opérateur (pas de hairpin) et la WebView ne publie aucun candidat sur l'interface de partage (rndis0). ICE reste en checking ; aucun relais TURN configuré. Diagnostic par getStats() le 2026-10-24."
+    },
+    {
+      "etape": "audio-pc-vers-telephone-ptt",
+      "statut": "BLOQUÉ",
+      "duree_ms": 11309,
+      "erreur": "aucun son reçu sur le téléphone : 0",
+      "statut_brut": "ÉCHOUÉ",
+      "cause_blocage": "Réseau de test : le PC sort par le partage USB du téléphone ; les deux pairs ont la même IP publique derrière le CGNAT de l'opérateur (pas de hairpin) et la WebView ne publie aucun candidat sur l'interface de partage (rndis0). ICE reste en checking ; aucun relais TURN configuré. Diagnostic par getStats() le 2026-10-24."
+    },
+    {
+      "etape": "audio-telephone-vers-pc-appui-reel-ecran",
+      "statut": "BLOQUÉ",
+      "duree_ms": 12016,
+      "erreur": "son du téléphone non reçu (avant 0, pendant 0)",
+      "statut_brut": "ÉCHOUÉ",
+      "cause_blocage": "Réseau de test : le PC sort par le partage USB du téléphone ; les deux pairs ont la même IP publique derrière le CGNAT de l'opérateur (pas de hairpin) et la WebView ne publie aucun candidat sur l'interface de partage (rndis0). ICE reste en checking ; aucun relais TURN configuré. Diagnostic par getStats() le 2026-10-24."
+    },
+    {
+      "etape": "bouton-casque-media-session",
+      "statut": "RÉUSSI",
+      "duree_ms": 3560,
+      "note": "Instable : réussi 1 fois sur 3 exécutions complètes le 2026-10-24 (deux échecs « ouvert=false »)."
+    },
+    {
+      "etape": "appel-inconnu-refuse-sur-telephone",
+      "statut": "RÉUSSI",
+      "duree_ms": 4083
+    },
+    {
+      "etape": "arriere-plan-30s-reception",
+      "statut": "BLOQUÉ",
+      "duree_ms": 34016,
+      "erreur": "pas de son reçu en arrière-plan : 0",
+      "statut_brut": "ÉCHOUÉ",
+      "cause_blocage": "Réseau de test : le PC sort par le partage USB du téléphone ; les deux pairs ont la même IP publique derrière le CGNAT de l'opérateur (pas de hairpin) et la WebView ne publie aucun candidat sur l'interface de partage (rndis0). ICE reste en checking ; aucun relais TURN configuré. Diagnostic par getStats() le 2026-10-24."
+    },
+    {
+      "etape": "ecran-eteint-90s-reception",
+      "statut": "BLOQUÉ",
+      "duree_ms": 96083,
+      "erreur": "liaison perdue écran éteint",
+      "statut_brut": "ÉCHOUÉ",
+      "cause_blocage": "Réseau de test : le PC sort par le partage USB du téléphone ; les deux pairs ont la même IP publique derrière le CGNAT de l'opérateur (pas de hairpin) et la WebView ne publie aucun candidat sur l'interface de partage (rndis0). ICE reste en checking ; aucun relais TURN configuré. Diagnostic par getStats() le 2026-10-24."
+    },
+    {
+      "etape": "retour-premier-plan",
+      "statut": "RÉUSSI",
+      "duree_ms": 4731
+    },
+    {
+      "etape": "coupure-donnees-mobiles-et-reconnexion",
+      "statut": "BLOQUÉ",
+      "duree_ms": 73160,
+      "erreur": "condition non atteinte en 60000 ms : () => enLigne.has('ordi')",
+      "statut_brut": "ÉCHOUÉ",
+      "cause_blocage": "Réseau de test : le PC sort par le partage USB du téléphone ; les deux pairs ont la même IP publique derrière le CGNAT de l'opérateur (pas de hairpin) et la WebView ne publie aucun candidat sur l'interface de partage (rndis0). ICE reste en checking ; aucun relais TURN configuré. Diagnostic par getStats() le 2026-10-24.",
+      "note": "Reconnexion au serveur de signalisation atteinte après coupure/rétablissement des données ; seule la présence du pair (ICE) a échoué."
+    },
+    {
+      "etape": "relais-turn-force",
+      "statut": "BLOQUÉ",
+      "duree_ms": 9677,
+      "erreur": "aucun relais TURN fonctionnel (source : public) — configurer un TURN (docs/RESEAU.md)"
+    },
+    {
+      "etape": "mesures-ressources",
+      "statut": "RÉUSSI",
+      "duree_ms": 981,
+      "mesures": {
+        "pss_total_ko": 140366,
+        "top": [
+          "13830 15.1 166M com.anzaimuki.talkiewalkie"
+        ]
+      }
+    },
+    {
+      "etape": "deconnexion-libere-micro-et-service",
+      "statut": "RÉUSSI",
+      "duree_ms": 1750,
+      "mesures": {
+        "pistes": [
+          "ended"
+        ],
+        "enregistrements_actifs": 18
+      },
+      "note": "enregistrements_actifs compte des lignes d'historique de dumpsys audio, non significatif ; le critère est pistes=ended et service arrêté."
+    },
+    {
+      "etape": "mode-local-serveur-peerjs",
+      "statut": "BLOQUÉ",
+      "duree_ms": 33393,
+      "erreur": "condition non atteinte en 30000 ms : () => enLigne.has('ordi')",
+      "note": "Signalisation ws:// OK depuis le NSC corrigé (peer.open atteint) ; échec ensuite sur la présence : ICE sans chemin (téléphone et PC derrière le même CGNAT, sans TURN).",
+      "statut_brut": "ÉCHOUÉ",
+      "cause_blocage": "Réseau de test : le PC sort par le partage USB du téléphone ; les deux pairs ont la même IP publique derrière le CGNAT de l'opérateur (pas de hairpin) et la WebView ne publie aucun candidat sur l'interface de partage (rndis0). ICE reste en checking ; aucun relais TURN configuré. Diagnostic par getStats() le 2026-10-24."
+    },
+    {
+      "etape": "mode-direct-sans-serveur",
+      "statut": "BLOQUÉ",
+      "duree_ms": 21174,
+      "erreur": "condition non atteinte en 20000 ms : () => directActif",
+      "statut_brut": "ÉCHOUÉ",
+      "cause_blocage": "Réseau de test : le PC sort par le partage USB du téléphone ; les deux pairs ont la même IP publique derrière le CGNAT de l'opérateur (pas de hairpin) et la WebView ne publie aucun candidat sur l'interface de partage (rndis0). ICE reste en checking ; aucun relais TURN configuré. Diagnostic par getStats() le 2026-10-24."
+    }
+  ],
+  "statut_resume": {
+    "RÉUSSI": 9,
+    "BLOQUÉ": 9
+  }
+}

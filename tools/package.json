@@ -1,0 +1,25 @@
+{
+  "name": "talkie-walkie-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "vendor": "node vendor.mjs",
+    "test": "node --test tests/",
+    "peerjs-local": "peerjs --port 9000 --path /"
+  },
+  "dependencies": {
+    "peerjs": "1.5.5",
+    "qrcode-generator": "1.4.4",
+    "jsqr": "1.4.0",
+    "firebase": "10.12.2",
+    "@sapphi-red/web-noise-suppressor": "0.4.1",
+    "@fontsource/barlow": "5.1.0",
+    "@fontsource/barlow-condensed": "5.1.0"
+  },
+  "devDependencies": {
+    "peer": "1.0.2",
+    "playwright-core": "1.49.1",
+    "pngjs": "7.0.0",
+    "pixelmatch": "6.0.0"
+  }
+}

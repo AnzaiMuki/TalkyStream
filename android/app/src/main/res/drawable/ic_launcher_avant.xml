@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bouton émetteur orange et micro du thème « radio de terrain » -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#C7CED0" android:pathData="M54,20a34,34 0 1,0 0.01,0z" />
+    <path android:fillColor="#FF5A1F" android:pathData="M54,26a28,28 0 1,0 0.01,0z" />
+    <group android:translateX="38" android:translateY="38" android:scaleX="1.333" android:scaleY="1.333">
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M12,1a3,3 0 0,0 -3,3v8a3,3 0 0,0 6,0V4a3,3 0 0,0 -3,-3z M19,10v2a7,7 0 0,1 -14,0v-2 M12,19v4 M8,23h8" />
+    </group>
+</vector>

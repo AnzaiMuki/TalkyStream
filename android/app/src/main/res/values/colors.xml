@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Repris de :root dans web/index.html -->
+    <color name="corps">#D8DDDE</color>
+    <color name="corps_sombre">#222527</color>
+    <color name="orange">#FF5A1F</color>
+    <color name="encre">#18232B</color>
+</resources>

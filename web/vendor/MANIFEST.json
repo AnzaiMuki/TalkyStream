@@ -1,0 +1,72 @@
+{
+  "peerjs.min.js": {
+    "package": "peerjs",
+    "version": "1.5.5",
+    "sha256": "7604d8c31bec4f134b0d15c2d80b1d095ea18af005354f439f14291fcd7b4168"
+  },
+  "qrcode.js": {
+    "package": "qrcode-generator",
+    "version": "1.4.4",
+    "sha256": "18ae399f81182bc9de916e9c77b195df20cc58d6f2d55a62b085a299f1bf1780"
+  },
+  "jsQR.js": {
+    "package": "jsqr",
+    "version": "1.4.0",
+    "sha256": "bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859"
+  },
+  "firebase-app-compat.js": {
+    "package": "firebase",
+    "version": "10.12.2",
+    "sha256": "24a1fd90a9424647636669f59013201ba385eff82a58f88c76a7d400d4d71139"
+  },
+  "firebase-auth-compat.js": {
+    "package": "firebase",
+    "version": "10.12.2",
+    "sha256": "277f6ef70525168247921e7a51fe995ecc66f9c3cf56c97f0d2bc262f74b5906"
+  },
+  "noise/index.js": {
+    "package": "@sapphi-red/web-noise-suppressor",
+    "version": "0.4.1",
+    "sha256": "e2386fac75bf8556a70381d09f5066c4436f2c410c1eee4b2adb7144d6cc4b3a"
+  },
+  "noise/rnnoise/workletProcessor.js": {
+    "package": "@sapphi-red/web-noise-suppressor",
+    "version": "0.4.1",
+    "sha256": "1e06facbb3d7459b89769aa4247cd4b71263e6662e4da0c54763f3bf06f5893b"
+  },
+  "noise/rnnoise.wasm": {
+    "package": "@sapphi-red/web-noise-suppressor",
+    "version": "0.4.1",
+    "sha256": "8b60a2ab88fdae2d1a9f940249d0eb072f28ba8e796f7304347b4e07839c8853"
+  },
+  "noise/rnnoise_simd.wasm": {
+    "package": "@sapphi-red/web-noise-suppressor",
+    "version": "0.4.1",
+    "sha256": "378fd17c294db15ee4e818ba5ef072242a21c8ad7445b483f7f46d7dc4f2c253"
+  },
+  "fonts/barlow-400.woff2": {
+    "package": "@fontsource/barlow",
+    "version": "5.1.0",
+    "sha256": "7c9c80a6c32c0619d61c28f28723e68c5f8f75163e77ee5cf64c39e640e0d71e"
+  },
+  "fonts/barlow-500.woff2": {
+    "package": "@fontsource/barlow",
+    "version": "5.1.0",
+    "sha256": "7c0597b1b0c771139c958982210f05b275993037f0f3ba20d7a9300a0741dc80"
+  },
+  "fonts/barlow-600.woff2": {
+    "package": "@fontsource/barlow",
+    "version": "5.1.0",
+    "sha256": "2b14e8397d552f351a4396dec25ec5da1348865683100e94c4ab0faea4a9a254"
+  },
+  "fonts/barlow-condensed-600.woff2": {
+    "package": "@fontsource/barlow-condensed",
+    "version": "5.1.0",
+    "sha256": "0b281bf2f4179c06ba68f0a427f2341287c41eacc2ce9d534c6f5c513ac633fb"
+  },
+  "fonts/barlow-condensed-700.woff2": {
+    "package": "@fontsource/barlow-condensed",
+    "version": "5.1.0",
+    "sha256": "8320299532b4b81498d5b3714d49c9d5938883b55f4c2a1efe6f105bf4a942bd"
+  }
+}

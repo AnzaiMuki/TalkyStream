@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Autorités système uniquement (pas de certificats installés par l'utilisateur).
+     Le clair est autorisé au niveau plateforme UNIQUEMENT pour le mode Local (ws:// vers un serveur PeerJS
+     du réseau privé) : la WebView applique ce réglage (ERR_CLEARTEXT_NOT_PERMITTED vérifié sur appareil) et
+     le NSC ne sait pas exprimer les plages IP privées. Le clair reste bloqué ailleurs par :
+     - le CSP de web/index.html (connect-src sans http: ; scripts, images, polices en 'self') ;
+     - analyserServeurLocal() qui n'accepte ws:// que vers 10/8, 172.16/12, 192.168/16, 169.254/16, 127/8, .local, fd/fe80 ;
+     - Politique.java qui refuse toute navigation hors de l'origine embarquée. -->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

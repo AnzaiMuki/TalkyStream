@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Talkie-walkie</string>
+    <string name="canal_session">Session Talkie-walkie</string>
+    <string name="canal_alertes">Appels et messages</string>
+    <string name="notif_connecte">Connecté au canal %1$s</string>
+    <string name="notif_micro_ouvert">🔴 Micro ouvert</string>
+    <string name="notif_micro_coupe">Micro coupé · prêt à recevoir</string>
+    <string name="action_couper">Couper le micro</string>
+    <string name="action_quitter">Quitter le canal</string>
+    <string name="ok" translatable="false">OK</string>
+    <string name="annuler">Annuler</string>
+    <string name="partager">Partager</string>
+    <string name="permission_micro_refusee">Micro refusé : Talkie-walkie ne peut pas émettre.</string>
+    <string name="permission_camera_refusee">Caméra refusée : colle le code à la place.</string>
+    <string name="erreur_rendu">L\'affichage a redémarré après une erreur.</string>
+</resources>

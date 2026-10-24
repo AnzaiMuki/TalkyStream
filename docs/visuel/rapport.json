@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-24T01:17:46.907Z",
+  "appareil": {
+    "modele": "Infinix X680",
+    "android": "10",
+    "sdk": "29",
+    "taille": "Physical size: 720x1640",
+    "densite": "Physical density: 320",
+    "webview": "com.google.android.webview, 155.0.8059.43"
+  },
+  "viewport": {
+    "haut": 64,
+    "dpr": 2,
+    "w": 360,
+    "h": 772
+  },
+  "methode": "pixelmatch seuil 0.1 sur la zone WebView ; géométrie getBoundingClientRect en px CSS",
+  "etats": [
+    {
+      "etat": "01-lancement",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "02-choix-langue",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "03-authentification",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "04-accueil",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "05-connecte-contacts",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "06-ptt-actif",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "07-parametres",
+      "pixelsDifferents": 124175,
+      "pourcentage": 11.17,
+      "ecartsElements": []
+    },
+    {
+      "etat": "08-partage-qr",
+      "pixelsDifferents": 181943,
+      "pourcentage": 16.366,
+      "ecartsElements": [
+        {
+          "element": ".modal.show .modal-box",
+          "champs": {
+            "y": [
+              119,
+              99
+            ],
+            "h": [
+              534,
+              575
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "etat": "09-chat",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "10-appel-entrant",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "11-connexion-directe",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "12-appel-choix",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "13-theme-sombre",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    },
+    {
+      "etat": "14-sombre-parametres",
+      "pixelsDifferents": 123454,
+      "pourcentage": 11.105,
+      "ecartsElements": []
+    },
+    {
+      "etat": "15-anglais",
+      "pixelsDifferents": 0,
+      "pourcentage": 0,
+      "ecartsElements": []
+    }
+  ]
+}

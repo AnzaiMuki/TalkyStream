@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TalkieWalkie" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/corps</item>
+        <item name="android:colorAccent">@color/orange</item>
+        <item name="android:colorPrimary">@color/encre</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
