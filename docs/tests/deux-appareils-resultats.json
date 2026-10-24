@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-24T08:54:13.278Z",
+  "canal": "E2EVIC8ON",
+  "resultats": [
+    {
+      "etape": "demarrage-deux-telephones",
+      "statut": "RÉUSSI",
+      "duree_ms": 6363,
+      "mesures": {
+        "a": "Infinix X680",
+        "b": "SM-G950U1"
+      }
+    },
+    {
+      "etape": "connexion-canal-deux-telephones",
+      "statut": "RÉUSSI",
+      "duree_ms": 5275
+    },
+    {
+      "etape": "presence-mutuelle",
+      "statut": "BLOQUÉ",
+      "duree_ms": 40244,
+      "erreur": "ICE impossible entre les deux téléphones (CGNAT des deux côtés, pas de relais TURN) : [{\"peer_ouvert\":true,\"etats_ice\":[\"disconnected\",\"disconnected\",\"checking\",\"checking\"],\"candidats_locaux\":[\"host\",\"srflx\"],\"source_turn\":\"public\"},{\"peer_ouvert\":true,\"etats_ice\":[\"disconnected\",\"disconnected\",\"che"
+    },
+    {
+      "etape": "erreurs-js-et-plantages",
+      "statut": "RÉUSSI",
+      "duree_ms": 363,
+      "mesures": {
+        "erreurs_js": {
+          "a": [],
+          "b": []
+        },
+        "plantages": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

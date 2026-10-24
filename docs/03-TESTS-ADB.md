@@ -77,6 +77,20 @@ C'est une limite de l'**environnement de test**, pas un défaut de l'application
 
 Puis relancer : `cd tools && node e2e/appareil.e2e.mjs`.
 
+## 4 bis. Appel entre deux téléphones — `tools/e2e/deux-appareils.e2e.mjs`
+
+Infinix X680 (Android, WebView Chrome) et Galaxy S8 SM-G950U1 (Android 9, WebView Chrome 138), APK debug v17 sur les deux, chacun sur les données mobiles d'un opérateur différent. Les résultats sont dans `docs/tests/deux-appareils-resultats.json`.
+
+| Étape | Statut | Détail |
+|---|---|---|
+| Démarrage des deux applications, accès DevTools | RÉUSSI | |
+| Connexion au canal (PeerJS Cloud) sur les deux | RÉUSSI | `peer.open` vrai des deux côtés |
+| Présence mutuelle | BLOQUÉ | connexions de données en `checking`/`disconnected`, candidats *host* et *srflx* seulement, aucun *relay* (openrelay hors service) |
+| Audio A → B et B → A par appui réel sur l'écran | BLOQUÉ | dépend de la présence |
+| Erreurs JS, plantages | RÉUSSI | 0 et 0 |
+
+Cause mesurée : le NAT de l'opérateur de l'Infinix est symétrique (voir [RESEAU.md](RESEAU.md) §2). Il faut un relais TURN. Le mode Cloudflare a été ajouté à `serveur-turn` (§4 bis de RESEAU.md) ; le test sera à relancer une fois le service déployé.
+
 ## 5. Défauts trouvés et corrigés pendant la campagne
 
 | Défaut | Où | Correction |
@@ -92,7 +106,7 @@ Puis relancer : `cd tools && node e2e/appareil.e2e.mjs`.
 
 | Point | Statut |
 |---|---|
-| Son réel entre deux pairs (tous modes) | BLOQUÉ (réseau) |
+| Son réel entre deux pairs (tous modes) | BLOQUÉ (réseau) : téléphone ↔ PC (§4) et téléphone ↔ téléphone entre deux opérateurs (§4 bis) ; il faut un relais TURN déployé |
 | Limitation des minuteurs en arrière-plan / Doze avec un pair réel | BLOQUÉ (réseau) |
 | Routage audio haut-parleur / écouteur | NON TESTÉ (nécessite un son reçu) |
 | Connexion Google (Credential Manager → Firebase) | BLOQUÉ : `tw.googleWebClientId` absent, empreinte SHA-1 non enregistrée dans Firebase |

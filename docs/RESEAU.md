@@ -16,6 +16,8 @@ WebRTC essaie d'abord une liaison directe. Elle échoue quand :
 
 Dans ces cas, seul un relais TURN fait passer l'audio. Il ne déchiffre rien : le flux reste en DTLS-SRTP.
 
+**Mesure du 24/10/2026 (Infinix X680 et Galaxy S8, deux opérateurs mobiles différents)** : depuis la WebView, une même socket a été interrogée par plusieurs serveurs STUN (3 essais). Côté Infinix, le port public **change selon le serveur** : c'est un NAT symétrique, avec des ports attribués à la suite. Côté S8, un seul serveur STUN répond, donc le comportement n'a pas pu être déterminé. Avec un NAT symétrique d'un côté, la perforation directe (hole punching) n'est pas fiable, et WebRTC ne fait pas de prédiction de port. Les connexions de présence sont restées en `checking`/`disconnected`, avec seulement des candidats *host* et *srflx*. **Un relais TURN est indispensable** pour relier deux téléphones sur des réseaux différents. Aucun réglage de l'application ne peut s'en passer.
+
 **État actuel** : le relais public openrelay ne répond plus (aucun candidat *relay* obtenu en 6 s). Sans configuration, le mode Internet entre réseaux incompatibles **ne fonctionne pas**, comme dans l'original, où le verrou Pro retirait de toute façon le relais.
 
 ## 3. Ordre de priorité des sources de relais dans l'application
@@ -36,6 +38,7 @@ Variables d'environnement à définir sur la plateforme d'hébergement, **jamais
 | Variable | Mode | Contenu |
 |---|---|---|
 | `TURN_SECRET`, `TURN_URLS` | coturn (« TURN REST API ») | secret partagé `static-auth-secret` de coturn ; URLs séparées par des virgules, par exemple `turn:turn.exemple.org:3478,turns:turn.exemple.org:5349` |
+| `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` | Cloudflare Realtime TURN (**recommandé**, voir §4 bis) | identifiant de la clé TURN et son jeton d'API, créés dans le tableau de bord Cloudflare › Realtime › TURN |
 | `METERED_APP`, `METERED_SECRET_KEY` | Metered | nom de l'app et **clé secrète** du tableau de bord |
 | `TURN_TTL` | optionnel | 300 à 86 400 s (défaut 3 600) |
 | `ORIGINES` | optionnel | origines autorisées (défaut : `https://appassets.androidplatform.net,https://anzaimuki.github.io`) |
@@ -47,6 +50,28 @@ Variables d'environnement à définir sur la plateforme d'hébergement, **jamais
 4. Pour la version web : renseigner `TURN_SERVICE_URL` dans `web/index.html` avant publication.
 
 Remarque : un service sans authentification de l'utilisateur distribue des identifiants à quiconque connaît l'URL depuis une origine autorisée. L'en-tête `Origin` se falsifie hors navigateur. Il faut donc surveiller la consommation et plafonner le quota chez le fournisseur.
+
+## 4 bis. Choix du fournisseur de relais (recherche du 24/10/2026)
+
+Ordre de grandeur : en Opus mono, un flux de parole fait environ 15 à 20 Mo par heure et par sens. En talkie-walkie, seul le temps d'appui compte. 1 Go relayé correspond donc à plusieurs dizaines d'heures de parole.
+
+| Fournisseur | Gratuit | Ports / TLS 443 | Identifiants temporaires | Verdict |
+|---|---|---|---|---|
+| **Cloudflare Realtime TURN** | 1 000 Go/mois (sortie), puis 0,05 $/Go | UDP 3478 et 443, TCP 80 et 3478, TLS 443 et 5349 | oui, API `generate-ice-servers`, durée jusqu'à 48 h | **recommandé** : quota large, réseau mondial, passe les réseaux qui bloquent l'UDP |
+| ExpressTURN | 1 000 Go/mois | 3478 UDP/TCP seulement ; 80/443 et TLS réservés à l'offre payante (9 $/mois) | non en gratuit (identifiants fixes) | à éviter en gratuit : identifiants fixes donc exposés dans l'app, c'est la fuite constatée sur l'original |
+| Metered | 500 Mo/mois (davantage selon les conditions, à vérifier) | 80/443, TLS | oui, déjà pris en charge par `serveur-turn` | trop juste en gratuit ; l'offre payante commence à 99 $/mois |
+| Xirsys | 500 Mo/mois après 30 jours d'essai | TLS | oui | trop juste |
+| coturn auto-hébergé (VM gratuite) | coût de la VM | au choix | oui, `use-auth-secret`, pris en charge par `serveur-turn` | maîtrise totale, mais maintenance, IP publique et ouverture d'une plage de ports UDP |
+| openrelay (public) | — | — | — | **hors service** (aucun candidat relais obtenu) |
+
+Les quotas et les tarifs changent souvent : vérifiez-les sur la page du fournisseur avant de choisir. Sources : [Cloudflare TURN, FAQ](https://developers.cloudflare.com/realtime/turn/faq/), [Cloudflare, génération d'identifiants](https://developers.cloudflare.com/realtime/turn/generate-credentials/), [ExpressTURN](https://www.expressturn.com/), [Metered](https://www.metered.ca/stun-turn), [Xirsys](https://xirsys.com/pricing), [coturn, man page](https://manpages.ubuntu.com/manpages/lunar/man1/coturn.1.html).
+
+**Mise en place avec Cloudflare** (comptes à créer par le propriétaire du projet) :
+1. Tableau de bord Cloudflare › Realtime › TURN › *Create TURN key* : notez l'identifiant de la clé et le jeton d'API. Ne les mettez jamais dans le dépôt ni dans l'APK.
+2. Déployez `serveur-turn` sur Vercel avec `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` et, si besoin, `TURN_TTL=14400` (durée d'une longue session ; au maximum 48 h chez Cloudflare).
+3. Vérifiez avec `curl -H "Origin: https://appassets.androidplatform.net" https://<projet>.vercel.app/api/turn`. La réponse doit contenir des URL `turn.cloudflare.com` et un `username` temporaire.
+4. Ajoutez `tw.turnServiceUrl=https://<projet>.vercel.app/api/turn` dans `android/local.properties`, recompilez, puis relancez `node e2e/deux-appareils.e2e.mjs` avec deux téléphones sur des réseaux différents.
+5. Configurez une alerte de facturation chez Cloudflare. L'URL du service est publique (voir la remarque du §4), et au-delà du quota gratuit chaque Go relayé est facturé.
 
 ## 5. Option simple : un TURN personnel par appareil
 
