@@ -19,13 +19,15 @@ L'application est une **WebView contrôlée** qui affiche `web/index.html` (v17)
 
 | Livrable | Fichier | Taille | SHA-256 | Statut |
 |---|---|---|---|---|
-| APK debug | `android/app/build/outputs/apk/debug/app-debug.apk` | 4 208 932 octets | `a06fb3919f72ebc6e16f95acb92a36a471c2e447a8c0d025223283efcf385153` | RÉUSSI |
-| APK release | `android/app/build/outputs/apk/release/app-release-unsigned.apk` | 1 033 297 octets | `bf9428a49a72b22911cb3f56c17b7f9975d14f916b286bcf5a29e351e17dfcd0` | RÉUSSI, **non signé** |
+| APK debug | `android/app/build/outputs/apk/debug/app-debug.apk` | 4 186 815 octets | `dd1f708edf6e779bee3b7809ccb6795c42033671e07f94fcde125156cf1d288c` | RÉUSSI (installation) ; démarrage sur l'appareil BLOQUÉ (téléphone passé hors ligne) |
+| APK release | `android/app/build/outputs/apk/release/app-release-unsigned.apk` | 1 033 297 octets | `bf9428a49a72b22911cb3f56c17b7f9975d14f916b286bcf5a29e351e17dfcd0` | RÉUSSI, **non signé** ; identique octet pour octet au build précédent |
 | APK release signé | — | — | — | NON APPLICABLE : aucune clé disponible ; procédure dans [INSTALLATION.md](INSTALLATION.md) §5 |
 | Tests ADB sur l'appareil | [03-TESTS-ADB.md](03-TESTS-ADB.md), [`tests/appareil-resultats.json`](tests/appareil-resultats.json) | | | RÉUSSI (avec étapes BLOQUÉ, §D) |
 | Rapports | 01 à 07, [RESEAU.md](RESEAU.md), [INSTALLATION.md](INSTALLATION.md), ce document | | | RÉUSSI |
 
 Les 4 valeurs TURN de l'original sont absentes des deux APK (recherche : 0 occurrence).
+
+Les deux APK livrés ont été recompilés à partir de zéro (`clean`) depuis le commit `c2633d2`, puis contrôlés : Node 24/24, JVM 5/5, `versionCode` 17, aucune valeur TURN dans le contenu décompressé, aucun script CDN dans `assets/index.html`. Le seul script CDN se trouve dans `assets/reference/`, la copie masquée de l'original, présente dans l'APK debug uniquement. L'APK release est identique à celui de la campagne. L'APK debug diffère de celui testé dans [03-TESTS-ADB.md](03-TESTS-ADB.md) (`a06fb391…f385153`, 4 208 932 octets), parce qu'un build debug n'est pas reproductible après `clean`. Le nouvel APK debug s'installe sur le téléphone, mais son démarrage n'a pas pu être vérifié : le téléphone est passé hors ligne.
 
 ## C. Fidélité visuelle — [02-FIDELITE-VISUELLE.md](02-FIDELITE-VISUELLE.md)
 
